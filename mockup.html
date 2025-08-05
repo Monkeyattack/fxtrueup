@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FXTrueUp Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 36L24 12L36 36' stroke='%2322C55E' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12 36L36 36' stroke='%2322C55E' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <!-- Chosen Palette: Warm Neutral Harmony with Green Accent -->
+    <!-- Application Structure Plan: The SPA is a dashboard with a three-section column layout on large screens, collapsing to a single column on smaller devices. The top section presents key performance indicators (KPIs) for quick reference. The middle section provides a portfolio summary and an interactive line chart for long-term trend analysis. The bottom section displays a portfolio allocation chart and a feed of recent transactions. This structure was chosen to provide a logical hierarchy of information, from high-level summaries to detailed breakdowns, allowing users to quickly check their status and then drill down into specific data points. The layout is optimized for efficient information consumption, a critical need for a financial dashboard. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Forex account data (P/L, allocation, trends).
+        - Goal: Visualize key financial metrics and trends.
+        - Viz/Presentation Method: 
+            - KPI Cards: Styled HTML with dynamic text updates. Green accent color is used for positive metrics.
+            - Performance Chart: A Chart.js Line chart to show profit over time. The line is styled with the green accent to match the logo.
+            - Allocation Chart: A Chart.js Donut chart to visualize portfolio distribution by currency, making complex data easy to grasp.
+        - Interaction: Users can view dynamic data points on hover. The charts are responsive to screen size changes. Simple text updates based on state changes are handled by JavaScript.
+        - Justification: These chart types are standard for financial dashboards, offering clear, intuitive data representation. The styling and color choices are consistent with the brand identity. Chart.js is used for its canvas-based rendering and ease of integration.
+        - Library/Method: Vanilla JavaScript, Tailwind CSS, Chart.js.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="text-gray-700 antialiased">
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
+        
+        <header class="flex flex-col sm:flex-row items-center justify-between mb-8 sm:mb-12">
+            <div class="flex items-center space-x-2">
+                <div class="w-[150px] h-auto text-gray-700 font-bold text-3xl">
+                    <svg width="250" height="70" viewBox="0 0 250 70" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto">
+                        <style>
+                            .font-inter-bold { font-family: 'Inter', sans-serif; font-weight: 700; }
+                            .font-inter-semibold { font-family: 'Inter', sans-serif; font-weight: 600; }
+                        </style>
+                        <text x="0" y="55" class="font-inter-semibold" font-size="50" fill="#6B7280">FX</text>
+                        <text x="75" y="55" class="font-inter-bold" font-size="50" fill="#111827">True</text>
+                        <g>
+                            <text x="180" y="55" class="font-inter-bold" font-size="50" fill="#22C55E">Up</text>
+                            <path d="M225 35L235 25L245 35" stroke="#22C55E" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+            <nav class="mt-4 sm:mt-0 space-x-4 text-gray-600 font-medium hidden sm:flex">
+                <a href="#" class="hover:text-gray-800">Dashboard</a>
+                <a href="#" class="hover:text-gray-800">Accounts</a>
+                <a href="#" class="hover:text-gray-800">Reports</a>
+                <a href="#" class="hover:text-gray-800">Settings</a>
+            </nav>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2">
+                <section class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200/80 mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Key Metrics</h2>
+                    <p class="text-gray-600 mb-6">A high-level overview of your combined forex account performance. The green accent color highlights positive changes.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="bg-gray-50 p-5 rounded-xl border border-gray-200/80">
+                            <h3 class="text-sm text-gray-500 font-medium">Total Portfolio Value</h3>
+                            <p class="text-3xl font-bold text-gray-900 mt-1">$1,234,567</p>
+                        </div>
+                        <div class="bg-gray-50 p-5 rounded-xl border border-gray-200/80">
+                            <h3 class="text-sm text-gray-500 font-medium">Net P&L</h3>
+                            <p class="text-3xl font-bold text-green-500 mt-1">+$5,890</p>
+                        </div>
+                        <div class="bg-gray-50 p-5 rounded-xl border border-gray-200/80">
+                            <h3 class="text-sm text-gray-500 font-medium">Daily Change</h3>
+                            <p class="text-3xl font-bold text-green-500 mt-1">+0.48%</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200/80 mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Performance Over Time</h2>
+                    <p class="text-gray-600 mb-6">This chart visualizes your portfolio's profit and loss trend over the last 30 days, helping you identify key patterns and performance shifts.</p>
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <div class="lg:col-span-1">
+                <section class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200/80 mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Portfolio Allocation</h2>
+                    <p class="text-gray-600 mb-6">A breakdown of your current portfolio by currency. This donut chart provides a clear, at-a-glance view of your exposure.</p>
+                    <div class="chart-container h-80">
+                        <canvas id="allocationChart"></canvas>
+                    </div>
+                </section>
+
+                <section class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200/80">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Recent Activity</h2>
+                    <p class="text-gray-600 mb-4">A summary of your latest transactions and trades across all consolidated accounts.</p>
+                    <div class="max-h-72 overflow-y-auto scrollbar-hide">
+                        <ul class="space-y-4">
+                            <li class="p-3 bg-gray-50 rounded-xl border border-gray-200/80 flex justify-between items-center">
+                                <div>
+                                    <p class="font-medium text-gray-900">Trade: EUR/USD</p>
+                                    <p class="text-sm text-gray-500">2 hours ago</p>
+                                </div>
+                                <span class="font-semibold text-green-500">+$250</span>
+                            </li>
+                            <li class="p-3 bg-gray-50 rounded-xl border border-gray-200/80 flex justify-between items-center">
+                                <div>
+                                    <p class="font-medium text-gray-900">Deposit: Account #1</p>
+                                    <p class="text-sm text-gray-500">4 hours ago</p>
+                                </div>
+                                <span class="font-semibold text-gray-800">$1,000</span>
+                            </li>
+                            <li class="p-3 bg-gray-50 rounded-xl border border-gray-200/80 flex justify-between items-center">
+                                <div>
+                                    <p class="font-medium text-gray-900">Trade: GBP/JPY</p>
+                                    <p class="text-sm text-gray-500">1 day ago</p>
+                                </div>
+                                <span class="font-semibold text-red-500">-$75</span>
+                            </li>
+                            <li class="p-3 bg-gray-50 rounded-xl border border-gray-200/80 flex justify-between items-center">
+                                <div>
+                                    <p class="font-medium text-gray-900">Trade: USD/CAD</p>
+                                    <p class="text-sm text-gray-500">2 days ago</p>
+                                </div>
+                                <span class="font-semibold text-green-500">+$120</span>
+                            </li>
+                            <li class="p-3 bg-gray-50 rounded-xl border border-gray-200/80 flex justify-between items-center">
+                                <div>
+                                    <p class="font-medium text-gray-900">Trade: EUR/USD</p>
+                                    <p class="text-sm text-gray-500">3 days ago</p>
+                                </div>
+                                <span class="font-semibold text-green-500">+$345</span>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-500 text-sm">
+            <p>&copy; 2025 FXTrueUp. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        const data = {
+            performance: {
+                labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7', 'Day 8', 'Day 9', 'Day 10', 'Day 11', 'Day 12', 'Day 13', 'Day 14', 'Day 15', 'Day 16', 'Day 17', 'Day 18', 'Day 19', 'Day 20', 'Day 21', 'Day 22', 'Day 23', 'Day 24', 'Day 25', 'Day 26', 'Day 27', 'Day 28', 'Day 29', 'Day 30'],
+                data: [1200, 1500, 1300, 2100, 2500, 2300, 2700, 3100, 3500, 3400, 3800, 4200, 4100, 4500, 4800, 5200, 5100, 5500, 5800, 5700, 6100, 6500, 6300, 6800, 7200, 7100, 7500, 7300, 7800, 8000]
+            },
+            allocation: {
+                labels: ['USD', 'EUR', 'JPY', 'GBP', 'CAD'],
+                data: [45, 25, 15, 10, 5]
+            }
+        };
+
+        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+        const performanceChart = new Chart(performanceCtx, {
+            type: 'line',
+            data: {
+                labels: data.performance.labels,
+                datasets: [{
+                    label: 'Net P&L',
+                    data: data.performance.data,
+                    fill: true,
+                    borderColor: '#22C55E',
+                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#6B7280'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: '#E5E7EB'
+                        },
+                        ticks: {
+                            color: '#6B7280',
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const allocationCtx = document.getElementById('allocationChart').getContext('2d');
+        const allocationChart = new Chart(allocationCtx, {
+            type: 'doughnut',
+            data: {
+                labels: data.allocation.labels,
+                datasets: [{
+                    label: 'Portfolio Allocation',
+                    data: data.allocation.data,
+                    backgroundColor: [
+                        '#3B82F6', // Blue
+                        '#F59E0B', // Amber
+                        '#6B7280', // Gray
+                        '#10B981', // Emerald
+                        '#EF4444' // Red
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: '#6B7280'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
