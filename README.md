@@ -1,4 +1,4 @@
-# FX True Up - CLAUDE.md
+# FX True Up - MetaTrader Portfolio Analytics
 
 > Smart MT4/MT5 Portfolio Tracker for Retail Traders, Signal Followers & Prop Firm Candidates  
 > **Live URL**: [fxtrueup.com](https://fxtrueup.com)  
@@ -29,8 +29,8 @@
 | Layer              | Tool / Service                         | Status |
 |--------------------|----------------------------------------|--------|
 | Backend            | **Node.js (Express)**                  | ✅ Deployed |
-| Frontend           | React/Next.js (Mobile-first)           | 🔄 Pending |
-| Auth               | **Firebase Auth** (Google + email/pass)| 🔧 Config needed |
+| Frontend           | **Vanilla JS + Tailwind CSS**          | ✅ Deployed |
+| Auth               | **Google OAuth 2.0**                   | ✅ Configured |
 | Database           | **Firestore** (Cloud NoSQL)            | 🔧 Config needed |
 | MT4/MT5 Access     | **MetaApi** (REST/WebSocket)           | 🔧 Token needed |
 | Reporting          | CSV + PDFKit + QBO API                 | ✅ Ready |
