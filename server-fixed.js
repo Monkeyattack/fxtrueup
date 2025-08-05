@@ -45,11 +45,12 @@ app.use(express.json());
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fx-true-up-session-secret-2025',
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // Set to false for now to work with CloudFlare Flexible SSL
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax'
   }
 }));
 
@@ -93,25 +94,35 @@ app.get('/api/auth/google/login', (req, res) => {
 
 app.get('/api/auth/google/callback', async (req, res) => {
   // Handle Google OAuth callback
-  // For now, create a mock session (in production, verify with Google)
   const { code, state } = req.query;
   
   if (code) {
-    // Mock user data - in production, exchange code for tokens and get user info
-    req.session.user = {
-      id: '123',
-      email: 'user@example.com',
-      name: 'User',
-      picture: null,
-      isAdmin: false
-    };
-    
-    // Check for admin email
-    if (req.session.user.email === 'meredith@monkeyattack.com') {
-      req.session.user.isAdmin = true;
+    try {
+      // For now, simulate successful auth with hardcoded user
+      // In production, exchange code for tokens with Google
+      const mockEmail = 'meredith@monkeyattack.com'; // Temporary for testing
+      
+      req.session.user = {
+        id: '123',
+        email: mockEmail,
+        name: mockEmail.split('@')[0],
+        picture: `https://ui-avatars.com/api/?name=${mockEmail.split('@')[0]}&background=1e40af&color=fff`,
+        isAdmin: mockEmail === 'meredith@monkeyattack.com'
+      };
+      
+      // Save session before redirect
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          res.redirect('/?auth=failed');
+        } else {
+          res.redirect('/dashboard');
+        }
+      });
+    } catch (error) {
+      console.error('OAuth callback error:', error);
+      res.redirect('/?auth=failed');
     }
-    
-    res.redirect('/dashboard');
   } else {
     res.redirect('/?auth=failed');
   }

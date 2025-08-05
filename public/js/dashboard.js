@@ -21,13 +21,17 @@ class Dashboard {
 
     async checkAuth() {
         try {
-            const response = await fetch('/api/auth/me');
+            const response = await fetch('/api/auth/me', {
+                credentials: 'include' // Important for cookies
+            });
             if (response.ok) {
                 this.user = await response.json();
+                console.log('Authenticated user:', this.user);
                 // Check if user is admin
                 this.isAdmin = this.user.email === 'meredith@monkeyattack.com';
                 return true;
             }
+            console.log('Auth check failed, status:', response.status);
             return false;
         } catch (error) {
             console.error('Auth check failed:', error);
@@ -124,10 +128,10 @@ class Dashboard {
 
     async loadDashboardData() {
         try {
-            // Fetch dashboard data
+            // Fetch dashboard data with credentials
             const [accounts, analytics] = await Promise.all([
-                fetch('/api/accounts').then(r => r.json()),
-                fetch('/api/analytics').then(r => r.json())
+                fetch('/api/accounts', { credentials: 'include' }).then(r => r.json()),
+                fetch('/api/analytics', { credentials: 'include' }).then(r => r.json())
             ]);
 
             // Update stats (using mock data for now)
