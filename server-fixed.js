@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import session from 'express-session';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,8 +35,23 @@ app.use(helmet({
   }
 }));
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
+
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fx-true-up-session-secret-2025',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
 
 // Serve static files from public directory
 app.use(express.static(publicPath));
@@ -75,15 +91,50 @@ app.get('/api/auth/google/login', (req, res) => {
   res.redirect(googleAuthUrl);
 });
 
-app.get('/api/auth/google/callback', (req, res) => {
+app.get('/api/auth/google/callback', async (req, res) => {
   // Handle Google OAuth callback
-  res.redirect('/?auth=success');
+  // For now, create a mock session (in production, verify with Google)
+  const { code, state } = req.query;
+  
+  if (code) {
+    // Mock user data - in production, exchange code for tokens and get user info
+    req.session.user = {
+      id: '123',
+      email: 'user@example.com',
+      name: 'User',
+      picture: null,
+      isAdmin: false
+    };
+    
+    // Check for admin email
+    if (req.session.user.email === 'meredith@monkeyattack.com') {
+      req.session.user.isAdmin = true;
+    }
+    
+    res.redirect('/dashboard');
+  } else {
+    res.redirect('/?auth=failed');
+  }
 });
 
 app.get('/api/auth/me', (req, res) => {
   // Check if user is authenticated
-  // For now, return placeholder
-  res.status(401).json({ message: 'Not authenticated' });
+  if (req.session && req.session.user) {
+    res.json(req.session.user);
+  } else {
+    res.status(401).json({ message: 'Not authenticated' });
+  }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      res.status(500).json({ error: 'Logout failed' });
+    } else {
+      res.json({ message: 'Logged out successfully' });
+    }
+  });
 });
 
 // Trading accounts routes (placeholder)
@@ -107,11 +158,23 @@ app.get('/api/analytics', (req, res) => {
   });
 });
 
-// Dashboard route (future)
+// Dashboard route
 app.get('/dashboard', (req, res) => {
-  // For now, redirect to homepage
-  res.redirect('/');
+  // Serve dashboard HTML
+  res.sendFile(path.join(publicPath, 'dashboard.html'));
 });
+
+// Middleware to check authentication
+const requireAuth = (req, res, next) => {
+  if (req.session && req.session.user) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Authentication required' });
+  }
+};
+
+// Protected routes
+app.get('/api/protected/*', requireAuth);
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
