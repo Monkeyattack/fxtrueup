@@ -38,6 +38,15 @@ class FXTrueUpApp {
             });
         }
 
+        // Pricing buttons
+        document.querySelectorAll('button').forEach(button => {
+            if (button.textContent.includes('Select Plan') || button.textContent.includes('Contact Sales')) {
+                button.addEventListener('click', () => {
+                    this.showComingSoonMessage('Stripe payment integration coming soon!');
+                });
+            }
+        });
+
         // Smooth scroll for navigation links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -118,6 +127,19 @@ class FXTrueUpApp {
         // Remove after 3 seconds
         setTimeout(() => {
             successDiv.remove();
+        }, 3000);
+    }
+
+    showComingSoonMessage(message) {
+        // Create and show a temporary info message
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+        infoDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
+        document.body.appendChild(infoDiv);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            infoDiv.remove();
         }, 3000);
     }
 }
