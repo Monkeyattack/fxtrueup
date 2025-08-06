@@ -4,20 +4,20 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import session from 'express-session';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
-// Temporary in-memory user store (replace with database in production)
-const userSessions = new Map();
-
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Get the correct path to public directory (going up from src to project root)
+// Simple in-memory auth store
+const authTokens = new Map();
+
+// Get the correct path to public directory
 const publicPath = path.resolve(__dirname, '..', 'public');
 
 console.log('🔍 Server starting from:', __dirname);
@@ -30,7 +30,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdnjs.cloudflare.com"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
       imgSrc: ["'self'", "data:", "https:"],
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
       connectSrc: ["'self'"]
@@ -43,27 +43,6 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-
-// Session configuration
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'fx-true-up-session-secret-2025',
-  resave: true,
-  saveUninitialized: true,
-  name: 'fxtrueup.sid',
-  cookie: {
-    secure: false, // Set to false for now to work with CloudFlare Flexible SSL
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'lax',
-    domain: process.env.NODE_ENV === 'production' ? '.fxtrueup.com' : undefined
-  }
-}));
-
-// Debug middleware
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path} - Session ID: ${req.sessionID}, User: ${req.session?.user?.email || 'none'}`);
-  next();
-});
 
 // Serve static files from public directory
 app.use(express.static(publicPath));
@@ -85,15 +64,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.get('/api/status', (req, res) => {
-  res.json({
-    message: 'FX True Up API is running',
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    publicPath: publicPath
-  });
-});
-
 // Google OAuth routes
 app.get('/api/auth/google/login', (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID || '75344539904-i1537el99trrm9dndv5kkt12p9as5bs8.apps.googleusercontent.com';
@@ -104,45 +74,38 @@ app.get('/api/auth/google/login', (req, res) => {
 });
 
 app.get('/api/auth/google/callback', async (req, res) => {
-  // Handle Google OAuth callback
-  const { code, state } = req.query;
+  const { code } = req.query;
   
   if (code) {
-    try {
-      // For now, simulate successful auth with hardcoded user
-      // In production, exchange code for tokens with Google
-      const mockEmail = 'meredith@monkeyattack.com'; // Temporary for testing
-      
-      req.session.user = {
-        id: '123',
-        email: mockEmail,
-        name: mockEmail.split('@')[0],
-        picture: `https://ui-avatars.com/api/?name=${mockEmail.split('@')[0]}&background=1e40af&color=fff`,
-        isAdmin: mockEmail === 'meredith@monkeyattack.com'
-      };
-      
-      // Save session before redirect
-      req.session.save((err) => {
-        if (err) {
-          console.error('Session save error:', err);
-          res.redirect('/?auth=failed');
-        } else {
-          res.redirect('/dashboard');
-        }
-      });
-    } catch (error) {
-      console.error('OAuth callback error:', error);
-      res.redirect('/?auth=failed');
-    }
+    // Generate a simple auth token
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // For testing, assume the user is meredith@monkeyattack.com
+    const user = {
+      id: '123',
+      email: 'meredith@monkeyattack.com',
+      name: 'meredith',
+      picture: 'https://ui-avatars.com/api/?name=meredith&background=1e40af&color=fff',
+      isAdmin: true
+    };
+    
+    // Store the token
+    authTokens.set(token, user);
+    
+    // Redirect with token as query parameter
+    res.redirect(`/dashboard?token=${token}`);
   } else {
     res.redirect('/?auth=failed');
   }
 });
 
+// Auth check endpoint
 app.get('/api/auth/me', (req, res) => {
-  // Check if user is authenticated
-  if (req.session && req.session.user) {
-    res.json(req.session.user);
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace('Bearer ', '');
+  
+  if (token && authTokens.has(token)) {
+    res.json(authTokens.get(token));
   } else {
     res.status(401).json({ message: 'Not authenticated' });
   }
@@ -150,13 +113,14 @@ app.get('/api/auth/me', (req, res) => {
 
 // Logout endpoint
 app.post('/api/auth/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      res.status(500).json({ error: 'Logout failed' });
-    } else {
-      res.json({ message: 'Logged out successfully' });
-    }
-  });
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace('Bearer ', '');
+  
+  if (token) {
+    authTokens.delete(token);
+  }
+  
+  res.json({ message: 'Logged out successfully' });
 });
 
 // Trading accounts routes (placeholder)
@@ -182,21 +146,8 @@ app.get('/api/analytics', (req, res) => {
 
 // Dashboard route
 app.get('/dashboard', (req, res) => {
-  // Serve dashboard HTML
   res.sendFile(path.join(publicPath, 'dashboard.html'));
 });
-
-// Middleware to check authentication
-const requireAuth = (req, res, next) => {
-  if (req.session && req.session.user) {
-    next();
-  } else {
-    res.status(401).json({ error: 'Authentication required' });
-  }
-};
-
-// Protected routes
-app.get('/api/protected/*', requireAuth);
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
