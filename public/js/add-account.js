@@ -1,19 +1,46 @@
 // Add Account Page
 class AddAccount {
     constructor() {
-        this.token = localStorage.getItem('authToken');
+        this.token = null;
         this.init();
     }
 
     async init() {
+        console.log('AddAccount init started');
+        
+        // Get token from URL or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenFromUrl = urlParams.get('token');
+        console.log('Token from URL:', tokenFromUrl);
+        
+        if (tokenFromUrl) {
+            // Store token and clean URL (but preserve other params)
+            localStorage.setItem('authToken', tokenFromUrl);
+            urlParams.delete('token');
+            const newUrl = urlParams.toString() ? `/add-account?${urlParams.toString()}` : '/add-account';
+            window.history.replaceState({}, document.title, newUrl);
+            this.token = tokenFromUrl;
+        } else {
+            this.token = localStorage.getItem('authToken');
+            console.log('Token from localStorage:', this.token);
+        }
+
+        console.log('Final token:', this.token);
+
         // Check authentication
         if (!this.token || !(await this.checkAuth())) {
+            console.log('Authentication check failed, redirecting to home');
             window.location.href = '/?auth=required';
             return;
         }
 
         this.initializeEventListeners();
         this.loadUserData();
+        
+        // Auto-select MetaApi by default and show fields
+        setTimeout(() => {
+            window.selectConnectionMethod('metaapi');
+        }, 100);
     }
 
     async checkAuth() {
@@ -125,19 +152,20 @@ class AddAccount {
             }
         }
 
-        // If MetaApi selected, require token and password
+        // If MetaApi selected, require password or investor password
         if (accountData.connectionMethod === 'metaapi') {
-            if (!accountData.metaApiToken) {
-                this.showError('MetaApi token is required for MetaApi connections');
-                return;
-            }
-            if (!accountData.password) {
-                this.showError('Account password is required for MetaApi connections');
+            if (!accountData.password && !accountData.readOnlyPassword) {
+                this.showError('Account password or investor password is required for MetaApi connections');
                 return;
             }
         }
 
         try {
+            // Log the data being sent
+            console.log('Submitting account data:', accountData);
+            console.log('Auth token:', this.token);
+            console.log('Token exists:', !!this.token);
+            
             // Show loading
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
@@ -153,6 +181,9 @@ class AddAccount {
                 body: JSON.stringify(accountData)
             });
 
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+
             if (response.ok) {
                 this.showSuccess('Account added successfully!');
                 setTimeout(() => {
@@ -160,10 +191,18 @@ class AddAccount {
                 }, 1500);
             } else {
                 const error = await response.json();
-                this.showError(error.message || 'Failed to add account');
+                console.error('Server error:', error);
+                this.showError(error.error || error.message || 'Failed to add account');
+                // Re-enable button on error
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
         } catch (error) {
+            console.error('Network error:', error);
             this.showError('Network error. Please try again.');
+            // Re-enable button on error
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = false;
         }
     }
 

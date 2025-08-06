@@ -28,6 +28,14 @@
             }
         }
     </script>
+    
+    <!-- Debug styles -->
+    <style>
+        /* Ensure hidden class works properly */
+        .hidden { display: none !important; }
+        /* Debug - temporarily show all fields */
+        #metaApiFields { display: block !important; }
+    </style>
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->
@@ -164,21 +172,32 @@
                     <!-- MetaApi specific fields -->
                     <div id="metaApiFields" class="hidden space-y-6">
                         <div class="border-t pt-6">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">MetaApi Configuration</h3>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">MetaApi Integration</h3>
+                            
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                <div class="flex">
+                                    <i class="fas fa-info-circle text-blue-500 mt-0.5 mr-3"></i>
+                                    <div>
+                                        <h4 class="text-sm font-medium text-blue-900">Centralized MetaApi Management</h4>
+                                        <p class="text-sm text-blue-700 mt-1">We manage all MetaApi connections through our secure, centralized system. Simply provide your MT4/MT5 account credentials - no need to create your own MetaApi account or manage API tokens.</p>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="metaApiToken" class="block text-sm font-medium text-gray-700">MetaApi Token *</label>
-                                    <input type="password" id="metaApiToken" name="metaApiToken"
-                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
-                                           placeholder="Your MetaApi token">
-                                    <p class="mt-1 text-sm text-gray-500">Get your token from <a href="https://app.metaapi.cloud/token" target="_blank" class="text-primary hover:underline">MetaApi Dashboard</a></p>
-                                </div>
                                 <div>
                                     <label for="password" class="block text-sm font-medium text-gray-700">Account Password *</label>
                                     <input type="password" id="password" name="password"
                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
                                            placeholder="Trading account password">
+                                    <p class="mt-1 text-sm text-gray-500">Your MT4/MT5 account password (encrypted & secure)</p>
+                                </div>
+                                <div>
+                                    <label for="readOnlyPassword" class="block text-sm font-medium text-gray-700">Investor Password</label>
+                                    <input type="password" id="readOnlyPassword" name="readOnlyPassword"
+                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                           placeholder="Read-only password (optional)">
+                                    <p class="mt-1 text-sm text-gray-500">Safer option - read-only access if available</p>
                                 </div>
                             </div>
 
@@ -399,26 +418,35 @@
 
             <!-- Help Section -->
             <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h3 class="text-lg font-medium text-blue-900 mb-4">Need Help?</h3>
+                <h3 class="text-lg font-medium text-blue-900 mb-4">How It Works</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                        <h4 class="font-medium text-blue-800 mb-2">MetaApi Connection</h4>
+                        <h4 class="font-medium text-blue-800 mb-2">MetaApi Integration</h4>
                         <ul class="text-blue-700 space-y-1">
-                            <li>• Sign up at <a href="https://metaapi.cloud" target="_blank" class="underline">metaapi.cloud</a></li>
-                            <li>• Get your API token from the dashboard</li>
-                            <li>• Add your MT4/MT5 account to MetaApi</li>
-                            <li>• Use the same credentials here</li>
+                            <li>• No MetaApi account setup required</li>
+                            <li>• We handle all API token management</li>
+                            <li>• Enterprise-grade security & encryption</li>
+                            <li>• Real-time data sync across all accounts</li>
+                            <li>• Compatible with 500+ MT4/MT5 brokers</li>
                         </ul>
                     </div>
                     <div>
                         <h4 class="font-medium text-blue-800 mb-2">Manual Entry</h4>
                         <ul class="text-blue-700 space-y-1">
-                            <li>• Use for demo accounts or limited tracking</li>
-                            <li>• No live data synchronization</li>
-                            <li>• Manual performance updates required</li>
+                            <li>• Perfect for demo accounts or testing</li>
+                            <li>• No account credentials required</li>
+                            <li>• Manual balance and performance updates</li>
                             <li>• Good for portfolio overview</li>
+                            <li>• Can upgrade to MetaApi later</li>
                         </ul>
                     </div>
+                </div>
+                
+                <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded">
+                    <p class="text-green-800 text-sm">
+                        <i class="fas fa-shield-alt mr-2"></i>
+                        <strong>Security:</strong> All account credentials are encrypted using industry-standard security. We never store passwords in plain text and follow strict data protection protocols.
+                    </p>
                 </div>
             </div>
         </div>

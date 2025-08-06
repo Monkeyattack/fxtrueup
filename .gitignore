@@ -1,16 +1,17 @@
 # Dependencies
 node_modules/
-package-lock.json
+npm-debug.log
+yarn-error.log
 
-# Environment
+# Environment files
 .env
 .env.local
 .env.production
+.env.development
 
 # Logs
 logs/
 *.log
-npm-debug.log*
 
 # Runtime data
 pids
@@ -18,16 +19,15 @@ pids
 *.seed
 *.pid.lock
 
-# Firebase
-firebase-adminsdk-*.json
-.firebase/
-
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# OS
 .DS_Store
+Thumbs.db
 
 # Build
 dist/
@@ -35,9 +35,16 @@ build/
 
 # Testing
 coverage/
-.nyc_output/
+.nyc_output
 
-# Misc
-.cache/
-tmp/
-temp/
+# PM2
+.pm2/
+ecosystem.config.js
+
+# MetaApi
+metaapi-credentials.json
+metaapi-accounts.json
+
+# Temporary files
+*.tmp
+*.temp

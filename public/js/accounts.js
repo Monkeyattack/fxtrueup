@@ -1,7 +1,7 @@
 // Accounts Management Page
 class AccountsManager {
     constructor() {
-        this.token = localStorage.getItem('authToken');
+        this.token = null;
         this.accounts = [];
         this.filteredAccounts = [];
         this.currentEditId = null;
@@ -10,6 +10,21 @@ class AccountsManager {
     }
 
     async init() {
+        // Get token from URL or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenFromUrl = urlParams.get('token');
+        
+        if (tokenFromUrl) {
+            // Store token and clean URL (but preserve other params)
+            localStorage.setItem('authToken', tokenFromUrl);
+            urlParams.delete('token');
+            const newUrl = urlParams.toString() ? `/accounts?${urlParams.toString()}` : '/accounts';
+            window.history.replaceState({}, document.title, newUrl);
+            this.token = tokenFromUrl;
+        } else {
+            this.token = localStorage.getItem('authToken');
+        }
+
         // Check authentication
         if (!this.token || !(await this.checkAuth())) {
             window.location.href = '/?auth=required';
@@ -221,7 +236,11 @@ class AccountsManager {
                                 </div>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-gray-900">${account.accountName || 'Unnamed Account'}</h3>
+                                <h3 class="text-lg font-semibold text-gray-900">
+                                    <a href="/account-detail?id=${account.id}" class="hover:text-primary transition-colors">
+                                        ${account.accountName || 'Unnamed Account'}
+                                    </a>
+                                </h3>
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 text-sm text-gray-600">
                                     <div>
                                         <span class="font-medium">Login:</span> ${account.login || 'N/A'}

@@ -11,7 +11,9 @@
       "Bash(curl:*)",
       "Bash(ls:*)",
       "Bash(scp:*)",
-      "Bash(git remote add:*)"
+      "Bash(git remote add:*)",
+      "Bash(pm2 restart:*)",
+      "Bash(npm run start:prod:*)"
     ],
     "deny": []
   }
