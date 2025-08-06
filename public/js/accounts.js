@@ -224,13 +224,13 @@ class AccountsManager {
                                 <h3 class="text-lg font-semibold text-gray-900">${account.accountName || 'Unnamed Account'}</h3>
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 text-sm text-gray-600">
                                     <div>
-                                        <span class="font-medium">Account:</span> ${account.accountNumber || 'N/A'}
+                                        <span class="font-medium">Login:</span> ${account.login || 'N/A'}
                                     </div>
                                     <div>
                                         <span class="font-medium">Platform:</span> ${account.accountType?.toUpperCase() || 'N/A'}
                                     </div>
                                     <div>
-                                        <span class="font-medium">Server:</span> ${account.serverName || 'N/A'}
+                                        <span class="font-medium">Broker:</span> ${account.brokerName || account.serverName || 'N/A'}
                                     </div>
                                     <div>
                                         <span class="font-medium">Status:</span> 
@@ -239,10 +239,23 @@ class AccountsManager {
                                                 ? 'bg-green-100 text-green-800' 
                                                 : 'bg-yellow-100 text-yellow-800'
                                         }">
+                                            <i class="fas fa-${account.connectionMethod === 'metaapi' ? 'link' : 'edit'} mr-1"></i>
                                             ${account.connectionMethod === 'metaapi' ? 'Connected' : 'Manual'}
                                         </span>
                                     </div>
                                 </div>
+                                ${account.brokerName && account.accountRegion ? `
+                                    <div class="mt-2 text-sm text-gray-500">
+                                        <span class="font-medium">Server:</span> ${account.serverName} 
+                                        ${account.accountRegion ? `(${account.accountRegion.charAt(0).toUpperCase() + account.accountRegion.slice(1).replace('-', ' ')})` : ''}
+                                    </div>
+                                ` : ''}
+                                ${account.connectionMethod === 'manual' && (account.currentBalance || account.equity) ? `
+                                    <div class="mt-2 text-sm text-gray-600">
+                                        ${account.currentBalance ? `<span class="mr-4"><span class="font-medium">Balance:</span> $${account.currentBalance.toLocaleString()}</span>` : ''}
+                                        ${account.equity ? `<span><span class="font-medium">Equity:</span> $${account.equity.toLocaleString()}</span>` : ''}
+                                    </div>
+                                ` : ''}
                                 ${account.tags && account.tags.length > 0 ? `
                                     <div class="mt-3">
                                         <div class="flex flex-wrap gap-2">
@@ -290,8 +303,10 @@ class AccountsManager {
         document.getElementById('editAccountId').value = accountId;
         document.getElementById('editAccountName').value = account.accountName || '';
         document.getElementById('editAccountType').value = account.accountType || '';
-        document.getElementById('editAccountNumber').value = account.accountNumber || '';
+        document.getElementById('editLogin').value = account.login || '';
         document.getElementById('editServerName').value = account.serverName || '';
+        document.getElementById('editBrokerName').value = account.brokerName || '';
+        document.getElementById('editAccountRegion').value = account.accountRegion || '';
         document.getElementById('editAccountTags').value = account.tags ? account.tags.join(', ') : '';
         document.getElementById('editAccountNotes').value = account.notes || '';
 

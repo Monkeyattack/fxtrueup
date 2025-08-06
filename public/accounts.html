@@ -160,14 +160,34 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label for="editAccountNumber" class="block text-sm font-medium text-gray-700">Account Number</label>
-                        <input type="text" id="editAccountNumber" name="accountNumber" required
+                        <label for="editLogin" class="block text-sm font-medium text-gray-700">Login (Account Number)</label>
+                        <input type="text" id="editLogin" name="login" required
                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
                     </div>
                     <div>
                         <label for="editServerName" class="block text-sm font-medium text-gray-700">Server</label>
                         <input type="text" id="editServerName" name="serverName" required
                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="editBrokerName" class="block text-sm font-medium text-gray-700">Broker Name</label>
+                        <input type="text" id="editBrokerName" name="brokerName"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                    </div>
+                    <div>
+                        <label for="editAccountRegion" class="block text-sm font-medium text-gray-700">Region</label>
+                        <select id="editAccountRegion" name="accountRegion"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                            <option value="">Select Region</option>
+                            <option value="new-york">New York</option>
+                            <option value="london">London</option>
+                            <option value="singapore">Singapore</option>
+                            <option value="sydney">Sydney</option>
+                            <option value="other">Other</option>
+                        </select>
                     </div>
                 </div>
 

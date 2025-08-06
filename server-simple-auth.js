@@ -25,11 +25,20 @@ const mockAccounts = [
     userId: '123',
     accountName: 'Demo Scalping Account',
     accountType: 'mt4',
-    accountNumber: '123456789',
+    login: '123456789',
     serverName: 'Demo-Server',
+    brokerName: 'IC Markets',
+    accountRegion: 'new-york',
     connectionMethod: 'metaapi',
-    tags: ['demo', 'scalping', 'testing'],
-    notes: 'This is my demo account for testing scalping strategies',
+    metaApiToken: 'hidden_token_123',
+    password: 'hidden_password',
+    magic: 12345,
+    riskManagementApiEnabled: false,
+    baseCurrency: 'USD',
+    copyFactoryRoles: '',
+    tags: ['demo', 'scalping', 'ea', 'moderate'],
+    notes: 'This is my demo account for testing scalping strategies with EAs',
+    status: 'connected',
     createdAt: new Date().toISOString()
   },
   {
@@ -37,11 +46,36 @@ const mockAccounts = [
     userId: '123',
     accountName: 'Live Swing Trading',
     accountType: 'mt5',
-    accountNumber: '987654321',
+    login: '987654321',
     serverName: 'Live-Server-01',
+    brokerName: 'FTMO',
+    accountRegion: 'london',
     connectionMethod: 'manual',
-    tags: ['live', 'swing', 'conservative'],
-    notes: 'Conservative swing trading with larger timeframes',
+    initialBalance: 100000,
+    currentBalance: 112500,
+    equity: 115000,
+    tags: ['live', 'swing', 'conservative', 'prop-firm', 'manual'],
+    notes: 'Conservative swing trading with larger timeframes - FTMO challenge phase',
+    status: 'manual',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: '3',
+    userId: '123', 
+    accountName: 'Copy Trading Portfolio',
+    accountType: 'mt5',
+    login: '555666777',
+    serverName: 'CopyTrade-Live',
+    brokerName: 'Pepperstone',
+    accountRegion: 'sydney',
+    connectionMethod: 'metaapi',
+    metaApiToken: 'hidden_token_456',
+    password: 'hidden_password_2',
+    baseCurrency: 'USD',
+    copyFactoryRoles: 'SUBSCRIBER',
+    tags: ['live', 'copy-trading', 'signals', 'aggressive', 'day-trading'],
+    notes: 'Following top performers with automated copy trading',
+    status: 'connected',
     createdAt: new Date().toISOString()
   }
 ];
@@ -200,10 +234,21 @@ app.post('/api/accounts', (req, res) => {
   const accountData = req.body;
   
   // Validate required fields
-  const requiredFields = ['accountName', 'accountType', 'accountNumber', 'serverName'];
+  const requiredFields = ['accountName', 'accountType', 'login', 'serverName'];
   for (const field of requiredFields) {
     if (!accountData[field]) {
-      return res.status(400).json({ error: `${field} is required` });
+      const fieldName = field === 'login' ? 'account number' : field;
+      return res.status(400).json({ error: `${fieldName} is required` });
+    }
+  }
+
+  // Additional validation for MetaApi
+  if (accountData.connectionMethod === 'metaapi') {
+    if (!accountData.metaApiToken) {
+      return res.status(400).json({ error: 'MetaApi token is required for MetaApi connections' });
+    }
+    if (!accountData.password) {
+      return res.status(400).json({ error: 'Account password is required for MetaApi connections' });
     }
   }
 

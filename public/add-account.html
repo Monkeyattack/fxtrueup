@@ -109,13 +109,13 @@
                     <!-- Account Details -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="accountName" class="block text-sm font-medium text-gray-700">Account Name</label>
+                            <label for="accountName" class="block text-sm font-medium text-gray-700">Account Name *</label>
                             <input type="text" id="accountName" name="accountName" required
                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
                                    placeholder="e.g., Main Trading Account">
                         </div>
                         <div>
-                            <label for="accountType" class="block text-sm font-medium text-gray-700">Platform</label>
+                            <label for="accountType" class="block text-sm font-medium text-gray-700">Platform *</label>
                             <select id="accountType" name="accountType" required
                                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
                                 <option value="">Select Platform</option>
@@ -127,37 +127,252 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="accountNumber" class="block text-sm font-medium text-gray-700">Account Number</label>
-                            <input type="text" id="accountNumber" name="accountNumber" required
+                            <label for="login" class="block text-sm font-medium text-gray-700">Login (Account Number) *</label>
+                            <input type="text" id="login" name="login" required
                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
                                    placeholder="123456789">
                         </div>
                         <div>
-                            <label for="serverName" class="block text-sm font-medium text-gray-700">Server</label>
+                            <label for="serverName" class="block text-sm font-medium text-gray-700">Server *</label>
                             <input type="text" id="serverName" name="serverName" required
                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
                                    placeholder="BrokerName-Live">
                         </div>
                     </div>
 
-                    <!-- MetaApi specific fields -->
-                    <div id="metaApiFields" class="hidden space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="metaApiToken" class="block text-sm font-medium text-gray-700">MetaApi Token</label>
-                            <input type="password" id="metaApiToken" name="metaApiToken"
+                            <label for="brokerName" class="block text-sm font-medium text-gray-700">Broker Name</label>
+                            <input type="text" id="brokerName" name="brokerName"
                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
-                                   placeholder="Your MetaApi token">
-                            <p class="mt-1 text-sm text-gray-500">Get your token from <a href="https://app.metaapi.cloud/token" target="_blank" class="text-primary hover:underline">MetaApi Dashboard</a></p>
+                                   placeholder="e.g., IC Markets, FTMO, etc.">
+                        </div>
+                        <div>
+                            <label for="accountRegion" class="block text-sm font-medium text-gray-700">Region</label>
+                            <select id="accountRegion" name="accountRegion"
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                <option value="">Select Region</option>
+                                <option value="new-york">New York</option>
+                                <option value="london">London</option>
+                                <option value="singapore">Singapore</option>
+                                <option value="sydney">Sydney</option>
+                                <option value="other">Other</option>
+                            </select>
                         </div>
                     </div>
 
-                    <!-- Tags -->
-                    <div>
-                        <label for="accountTags" class="block text-sm font-medium text-gray-700">Tags</label>
-                        <input type="text" id="accountTags" name="accountTags"
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
-                               placeholder="e.g., scalping, swing, prop-firm">
-                        <p class="mt-1 text-sm text-gray-500">Separate tags with commas. Use tags to group accounts for reporting.</p>
+                    <!-- MetaApi specific fields -->
+                    <div id="metaApiFields" class="hidden space-y-6">
+                        <div class="border-t pt-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">MetaApi Configuration</h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="metaApiToken" class="block text-sm font-medium text-gray-700">MetaApi Token *</label>
+                                    <input type="password" id="metaApiToken" name="metaApiToken"
+                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                           placeholder="Your MetaApi token">
+                                    <p class="mt-1 text-sm text-gray-500">Get your token from <a href="https://app.metaapi.cloud/token" target="_blank" class="text-primary hover:underline">MetaApi Dashboard</a></p>
+                                </div>
+                                <div>
+                                    <label for="password" class="block text-sm font-medium text-gray-700">Account Password *</label>
+                                    <input type="password" id="password" name="password"
+                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                           placeholder="Trading account password">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="magic" class="block text-sm font-medium text-gray-700">Magic Number</label>
+                                    <input type="number" id="magic" name="magic"
+                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                           placeholder="12345">
+                                    <p class="mt-1 text-sm text-gray-500">Optional: For filtering specific EA trades</p>
+                                </div>
+                                <div>
+                                    <label for="riskManagementApiEnabled" class="block text-sm font-medium text-gray-700">Risk Management</label>
+                                    <select id="riskManagementApiEnabled" name="riskManagementApiEnabled"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                        <option value="false">Disabled</option>
+                                        <option value="true">Enabled</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="baseCurrency" class="block text-sm font-medium text-gray-700">Base Currency</label>
+                                    <select id="baseCurrency" name="baseCurrency"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                        <option value="">Auto-detect</option>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="GBP">GBP</option>
+                                        <option value="JPY">JPY</option>
+                                        <option value="AUD">AUD</option>
+                                        <option value="CAD">CAD</option>
+                                        <option value="CHF">CHF</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="copyFactoryRoles" class="block text-sm font-medium text-gray-700">CopyFactory Role</label>
+                                    <select id="copyFactoryRoles" name="copyFactoryRoles"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                        <option value="">None</option>
+                                        <option value="PROVIDER">Provider (Master)</option>
+                                        <option value="SUBSCRIBER">Subscriber (Follower)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Entry Fields -->
+                    <div id="manualFields" class="hidden space-y-6">
+                        <div class="border-t pt-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Manual Account Details</h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label for="initialBalance" class="block text-sm font-medium text-gray-700">Initial Balance</label>
+                                    <div class="mt-1 relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                        </div>
+                                        <input type="number" id="initialBalance" name="initialBalance" step="0.01"
+                                               class="pl-7 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                               placeholder="10000.00">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="currentBalance" class="block text-sm font-medium text-gray-700">Current Balance</label>
+                                    <div class="mt-1 relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                        </div>
+                                        <input type="number" id="currentBalance" name="currentBalance" step="0.01"
+                                               class="pl-7 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                               placeholder="10000.00">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="equity" class="block text-sm font-medium text-gray-700">Equity</label>
+                                    <div class="mt-1 relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                        </div>
+                                        <input type="number" id="equity" name="equity" step="0.01"
+                                               class="pl-7 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                               placeholder="10000.00">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Categories & Tags -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">Account Categories</label>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <!-- Account Type Categories -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-600 mb-2">ACCOUNT TYPE</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="live" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Live</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="demo" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Demo</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="prop-firm" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Prop Firm</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Trading Style Categories -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-600 mb-2">TRADING STYLE</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="scalping" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Scalping</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="day-trading" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Day Trading</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="swing" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Swing</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="position" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Position</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Risk Level Categories -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-600 mb-2">RISK LEVEL</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="conservative" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Conservative</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="moderate" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Moderate</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="aggressive" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Aggressive</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="high-risk" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">High Risk</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Strategy Categories -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-600 mb-2">STRATEGY</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="manual" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Manual</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="ea" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">EA/Bot</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="copy-trading" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Copy Trading</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="signals" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Signals</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="customTags" class="block text-sm font-medium text-gray-700">Custom Tags</label>
+                            <input type="text" id="customTags" name="customTags"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                   placeholder="e.g., testing, backup, challenge-phase1">
+                            <p class="mt-1 text-sm text-gray-500">Add custom tags separated by commas</p>
+                        </div>
                     </div>
 
                     <!-- Notes -->

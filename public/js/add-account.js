@@ -81,6 +81,7 @@ class AddAccount {
         // Connection method selection
         window.selectConnectionMethod = (method) => {
             const metaApiFields = document.getElementById('metaApiFields');
+            const manualFields = document.getElementById('manualFields');
             const radios = document.querySelectorAll('input[name="connectionMethod"]');
             
             radios.forEach(radio => {
@@ -91,8 +92,10 @@ class AddAccount {
 
             if (method === 'metaapi') {
                 metaApiFields.classList.remove('hidden');
-            } else {
+                manualFields.classList.add('hidden');
+            } else if (method === 'manual') {
                 metaApiFields.classList.add('hidden');
+                manualFields.classList.remove('hidden');
             }
         };
     }
@@ -101,25 +104,37 @@ class AddAccount {
         const formData = new FormData(e.target);
         const accountData = Object.fromEntries(formData.entries());
 
-        // Process tags
-        if (accountData.accountTags) {
-            accountData.tags = accountData.accountTags.split(',').map(tag => tag.trim()).filter(tag => tag);
-            delete accountData.accountTags;
-        }
+        // Process category tags (checkboxes)
+        const categoryTags = formData.getAll('categoryTags');
+        
+        // Process custom tags
+        const customTags = accountData.customTags ? 
+            accountData.customTags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+        
+        // Combine all tags
+        accountData.tags = [...categoryTags, ...customTags];
+        delete accountData.customTags;
 
         // Validate required fields
-        const requiredFields = ['accountName', 'accountType', 'accountNumber', 'serverName'];
+        const requiredFields = ['accountName', 'accountType', 'login', 'serverName'];
         for (const field of requiredFields) {
             if (!accountData[field]) {
-                this.showError(`Please fill in the ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+                const fieldName = field === 'login' ? 'account number' : field.replace(/([A-Z])/g, ' $1').toLowerCase();
+                this.showError(`Please fill in the ${fieldName}`);
                 return;
             }
         }
 
-        // If MetaApi selected, require token
-        if (accountData.connectionMethod === 'metaapi' && !accountData.metaApiToken) {
-            this.showError('MetaApi token is required for MetaApi connections');
-            return;
+        // If MetaApi selected, require token and password
+        if (accountData.connectionMethod === 'metaapi') {
+            if (!accountData.metaApiToken) {
+                this.showError('MetaApi token is required for MetaApi connections');
+                return;
+            }
+            if (!accountData.password) {
+                this.showError('Account password is required for MetaApi connections');
+                return;
+            }
         }
 
         try {
