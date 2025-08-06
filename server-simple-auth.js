@@ -14,8 +14,40 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Simple in-memory auth store
+// Simple in-memory stores
 const authTokens = new Map();
+const userAccounts = new Map(); // Map of userId -> accounts array
+
+// Mock accounts for demonstration
+const mockAccounts = [
+  {
+    id: '1',
+    userId: '123',
+    accountName: 'Demo Scalping Account',
+    accountType: 'mt4',
+    accountNumber: '123456789',
+    serverName: 'Demo-Server',
+    connectionMethod: 'metaapi',
+    tags: ['demo', 'scalping', 'testing'],
+    notes: 'This is my demo account for testing scalping strategies',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: '2', 
+    userId: '123',
+    accountName: 'Live Swing Trading',
+    accountType: 'mt5',
+    accountNumber: '987654321',
+    serverName: 'Live-Server-01',
+    connectionMethod: 'manual',
+    tags: ['live', 'swing', 'conservative'],
+    notes: 'Conservative swing trading with larger timeframes',
+    createdAt: new Date().toISOString()
+  }
+];
+
+// Initialize with mock data
+userAccounts.set('123', mockAccounts);
 
 // Get the correct path to public directory
 const publicPath = path.resolve(__dirname, '..', 'public');
@@ -164,13 +196,123 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
-// Trading accounts routes (placeholder)
+// Account management middleware
+const getAccountsForUser = (userId) => {
+  return userAccounts.get(userId) || [];
+};
+
+// Trading accounts routes
 app.get('/api/accounts', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace('Bearer ', '');
+  
+  if (!token || !authTokens.has(token)) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const user = authTokens.get(token);
+  const accounts = getAccountsForUser(user.id);
+  
   res.json({ 
-    message: 'MetaApi integration in progress',
-    accounts: [],
-    total: 0
+    accounts: accounts,
+    total: accounts.length
   });
+});
+
+// Add account
+app.post('/api/accounts', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace('Bearer ', '');
+  
+  if (!token || !authTokens.has(token)) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const user = authTokens.get(token);
+  const accountData = req.body;
+  
+  // Validate required fields
+  const requiredFields = ['accountName', 'accountType', 'accountNumber', 'serverName'];
+  for (const field of requiredFields) {
+    if (!accountData[field]) {
+      return res.status(400).json({ error: `${field} is required` });
+    }
+  }
+
+  // Generate ID
+  const accountId = Date.now().toString();
+  
+  // Create account object
+  const newAccount = {
+    id: accountId,
+    userId: user.id,
+    ...accountData,
+    createdAt: new Date().toISOString()
+  };
+
+  // Add to user's accounts
+  const userAccountsList = getAccountsForUser(user.id);
+  userAccountsList.push(newAccount);
+  userAccounts.set(user.id, userAccountsList);
+
+  res.status(201).json(newAccount);
+});
+
+// Update account
+app.put('/api/accounts/:id', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace('Bearer ', '');
+  
+  if (!token || !authTokens.has(token)) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const user = authTokens.get(token);
+  const accountId = req.params.id;
+  const updateData = req.body;
+  
+  const userAccountsList = getAccountsForUser(user.id);
+  const accountIndex = userAccountsList.findIndex(acc => acc.id === accountId);
+  
+  if (accountIndex === -1) {
+    return res.status(404).json({ error: 'Account not found' });
+  }
+
+  // Update account
+  userAccountsList[accountIndex] = {
+    ...userAccountsList[accountIndex],
+    ...updateData,
+    updatedAt: new Date().toISOString()
+  };
+  
+  userAccounts.set(user.id, userAccountsList);
+  res.json(userAccountsList[accountIndex]);
+});
+
+// Delete account
+app.delete('/api/accounts/:id', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace('Bearer ', '');
+  
+  if (!token || !authTokens.has(token)) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const user = authTokens.get(token);
+  const accountId = req.params.id;
+  
+  const userAccountsList = getAccountsForUser(user.id);
+  const accountIndex = userAccountsList.findIndex(acc => acc.id === accountId);
+  
+  if (accountIndex === -1) {
+    return res.status(404).json({ error: 'Account not found' });
+  }
+
+  // Remove account
+  userAccountsList.splice(accountIndex, 1);
+  userAccounts.set(user.id, userAccountsList);
+  
+  res.json({ message: 'Account deleted successfully' });
 });
 
 // Analytics routes (placeholder)  
@@ -188,6 +330,15 @@ app.get('/api/analytics', (req, res) => {
 // Dashboard route
 app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(publicPath, 'dashboard.html'));
+});
+
+// Accounts routes
+app.get('/accounts', (req, res) => {
+  res.sendFile(path.join(publicPath, 'accounts.html'));
+});
+
+app.get('/add-account', (req, res) => {
+  res.sendFile(path.join(publicPath, 'add-account.html'));
 });
 
 // 404 handler for API routes
