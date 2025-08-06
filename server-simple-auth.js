@@ -558,6 +558,11 @@ app.get('/account-detail', (req, res) => {
   res.sendFile(path.join(publicPath, 'account-detail.html'));
 });
 
+// Analytics page
+app.get('/analytics', (req, res) => {
+  res.sendFile(path.join(publicPath, 'analytics.html'));
+});
+
 // Test endpoint to debug add-account issue
 app.get('/api/test-add-account', (req, res) => {
   try {
