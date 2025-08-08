@@ -35,6 +35,7 @@ class AddAccount {
         }
 
         this.initializeEventListeners();
+// CSV file upload handler        const csvFileInput = document.getElementById("csvFile");        if (csvFileInput) {            csvFileInput.addEventListener("change", (e) => {                const file = e.target.files[0];                const statusEl = document.getElementById("csvStatus");                if (file) {                    statusEl.textContent = ;                    statusEl.classList.add("text-green-600");                } else {                    statusEl.textContent = "";                }            });        }
         this.loadUserData();
         
         // Auto-select MetaApi by default and show fields
@@ -71,6 +72,7 @@ class AddAccount {
     }
 
     initializeEventListeners() {
+// CSV file upload handler        const csvFileInput = document.getElementById("csvFile");        if (csvFileInput) {            csvFileInput.addEventListener("change", (e) => {                const file = e.target.files[0];                const statusEl = document.getElementById("csvStatus");                if (file) {                    statusEl.textContent = ;                    statusEl.classList.add("text-green-600");                } else {                    statusEl.textContent = "";                }            });        }
         // User menu
         const userMenuBtn = document.getElementById('userMenuBtn');
         const userDropdown = document.getElementById('userDropdown');
@@ -106,25 +108,7 @@ class AddAccount {
         }
 
         // Connection method selection
-        window.selectConnectionMethod = (method) => {
-            const metaApiFields = document.getElementById('metaApiFields');
-            const manualFields = document.getElementById('manualFields');
-            const radios = document.querySelectorAll('input[name="connectionMethod"]');
-            
-            radios.forEach(radio => {
-                if (radio.value === method) {
-                    radio.checked = true;
-                }
-            });
-
-            if (method === 'metaapi') {
-                metaApiFields.classList.remove('hidden');
-                manualFields.classList.add('hidden');
-            } else if (method === 'manual') {
-                metaApiFields.classList.add('hidden');
-                manualFields.classList.remove('hidden');
-            }
-        };
+window.selectConnectionMethod = (method) => {            const metaApiFields = document.getElementById("metaApiFields");            const manualFields = document.getElementById("manualFields");            const metaApiAccountFields = document.getElementById("metaApiAccountFields");            const radios = document.querySelectorAll("input[name="connectionMethod"]");                        radios.forEach(radio => {                if (radio.value === method) {                    radio.checked = true;                }            });            if (method === "metaapi") {                metaApiFields.classList.remove("hidden");                manualFields.classList.add("hidden");                if (metaApiAccountFields) metaApiAccountFields.classList.remove("hidden");                // Make login and server required for MetaAPI                document.getElementById("login").required = true;                document.getElementById("serverName").required = true;                document.getElementById("accountType").required = true;            } else if (method === "manual") {                metaApiFields.classList.add("hidden");                manualFields.classList.remove("hidden");                if (metaApiAccountFields) metaApiAccountFields.classList.add("hidden");                // Make login and server not required for manual                document.getElementById("login").required = false;                document.getElementById("serverName").required = false;                document.getElementById("accountType").required = false;                // Set default values for manual accounts                document.getElementById("login").value = "manual-" + Date.now();                document.getElementById("serverName").value = "manual";                document.getElementById("accountType").value = "mt4";            }        };
     }
 
     async handleSubmit(e) {
@@ -139,6 +123,7 @@ class AddAccount {
             accountData.customTags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
         
         // Combine all tags
+// Handle CSV file for manual accounts        const csvFile = formData.get("csvFile");        const hasCSV = accountData.connectionMethod === "manual" && csvFile && csvFile.size > 0;
         accountData.tags = [...categoryTags, ...customTags];
         delete accountData.customTags;
 

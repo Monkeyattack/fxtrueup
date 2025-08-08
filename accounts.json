@@ -1,0 +1,36 @@
+{
+  "57b5347a-acac-4cc4-a8fe-b7ea95bbe4cb": [
+    {
+      "connectionMethod": "metaapi",
+      "accountName": "MonkeyAttack Gold EA Demo",
+      "accountType": "mt4",
+      "login": "1123261449",
+      "serverName": "Plexytrade-Demo",
+      "brokerName": "PlexyTrade",
+      "accountRegion": "",
+      "password": " ETX00kr*WD",
+      "readOnlyPassword": "",
+      "magic": "",
+      "riskManagementApiEnabled": "false",
+      "baseCurrency": "USD",
+      "copyFactoryRoles": "",
+      "initialBalance": "",
+      "currentBalance": "",
+      "equity": "",
+      "categoryTags": "ea",
+      "accountNotes": "",
+      "tags": [
+        "demo",
+        "scalping",
+        "aggressive",
+        "ea",
+        "test",
+        "signalstart"
+      ],
+      "id": "1754522018780",
+      "userId": "57b5347a-acac-4cc4-a8fe-b7ea95bbe4cb",
+      "createdAt": "2025-08-06T23:13:38.780Z",
+      "metaApiAccountId": "d25b9ece-3422-43e8-a59b-cf85246beb3b"
+    }
+  ]
+}

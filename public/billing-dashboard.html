@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing Dashboard - FXTrueUp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        .subscription-status.active {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
+        
+        .subscription-status.grace-period {
+            background-color: #fef3c7;
+            border-color: #f59e0b;
+        }
+        
+        .subscription-status.inactive {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+        
+        .subscription-status {
+            border: 2px solid;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .btn-portal, .btn-subscribe {
+            background-color: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .btn-portal:hover, .btn-subscribe:hover {
+            background-color: #2563eb;
+        }
+        
+        .plan-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        
+        .plan-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .plan-card.popular {
+            border-color: #3b82f6;
+            background-color: #f0f9ff;
+        }
+        
+        .price {
+            font-size: 2em;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        
+        .feature-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .feature-list li:before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">
+            Billing Dashboard
+        </h1>
+        
+        <!-- Current Subscription Status -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Subscription Status</h2>
+            <div id="subscription-status">
+                Loading subscription status...
+            </div>
+        </div>
+        
+        <!-- Subscription Plans -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Available Plans</h2>
+            <div id="pricing-plans" class="flex flex-wrap justify-center">
+                Loading plans...
+            </div>
+        </div>
+        
+        <!-- Recent Invoices -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Recent Invoices</h2>
+            <div id="recent-invoices">
+                Loading invoices...
+            </div>
+        </div>
+        
+        <!-- Payment Method Form (Hidden by default) -->
+        <div id="payment-form-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 w-96">
+                <h3 class="text-lg font-semibold mb-4">Subscribe to Plan</h3>
+                
+                <div id="selected-plan-info" class="mb-4 p-3 bg-gray-100 rounded">
+                    <!-- Selected plan info will be shown here -->
+                </div>
+                
+                <form id="payment-form">
+                    <div id="card-element" class="p-3 border border-gray-300 rounded mb-4">
+                        <!-- Stripe Elements will create form elements here -->
+                    </div>
+                    
+                    <div id="card-errors" role="alert" class="text-red-500 text-sm mb-4"></div>
+                    
+                    <div class="flex justify-between">
+                        <button type="button" onclick="closePaymentModal()" 
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded">
+                            Cancel
+                        </button>
+                        <button type="submit" id="submit-payment" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded">
+                            Subscribe
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/billing-client.js"></script>
+    <script>
+        // Global variables
+        let selectedPlan = null;
+        
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                await loadSubscriptionStatus();
+                await loadPricingPlans();
+                await loadRecentInvoices();
+            } catch (error) {
+                console.error('Error initializing dashboard:', error);
+            }
+        });
+        
+        // Load subscription status
+        async function loadSubscriptionStatus() {
+            try {
+                await billingClient.displaySubscriptionStatus('subscription-status');
+            } catch (error) {
+                document.getElementById('subscription-status').innerHTML = 
+                    '<p class="text-red-500">Failed to load subscription status. Please log in.</p>';
+            }
+        }
+        
+        // Load pricing plans
+        async function loadPricingPlans() {
+            try {
+                const plans = await billingClient.getPlans();
+                const container = document.getElementById('pricing-plans');
+                
+                let html = '';
+                
+                plans.forEach((plan, index) => {
+                    const features = billingClient.formatFeatures(plan.features);
+                    const isPopular = plan.id === 'professional_monthly';
+                    
+                    html += `
+                        <div class="plan-card ${isPopular ? 'popular' : ''}">
+                            ${isPopular ? '<div class="text-blue-600 font-semibold mb-2">Most Popular</div>' : ''}
+                            <h3 class="text-xl font-semibold mb-2">${plan.name}</h3>
+                            <div class="price">${billingClient.formatPrice(plan.amount)}</div>
+                            <div class="text-gray-600 mb-4">per month</div>
+                            
+                            <ul class="feature-list">
+                                ${features.map(feature => `<li>${feature}</li>`).join('')}
+                            </ul>
+                            
+                            <button onclick="selectPlan('${plan.id}', '${plan.name}', ${plan.amount})" 
+                                    class="w-full py-2 px-4 ${isPopular ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} rounded font-semibold">
+                                Select Plan
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading plans:', error);
+                document.getElementById('pricing-plans').innerHTML = 
+                    '<p class="text-red-500">Failed to load pricing plans</p>';
+            }
+        }
+        
+        // Load recent invoices
+        async function loadRecentInvoices() {
+            try {
+                const invoices = await billingClient.getInvoices();
+                const container = document.getElementById('recent-invoices');
+                
+                if (invoices.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500">No invoices found</p>';
+                    return;
+                }
+                
+                let html = '<div class="space-y-4">';
+                
+                invoices.forEach(invoice => {
+                    const date = new Date(invoice.created * 1000).toLocaleDateString();
+                    const amount = billingClient.formatPrice(invoice.amount_paid, invoice.currency);
+                    
+                    html += `
+                        <div class="flex justify-between items-center p-4 border rounded">
+                            <div>
+                                <div class="font-semibold">Invoice #${invoice.number || invoice.id}</div>
+                                <div class="text-gray-600">${date}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-semibold">${amount}</div>
+                                <div class="text-sm text-${invoice.status === 'paid' ? 'green' : 'red'}-600">
+                                    ${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                                </div>
+                            </div>
+                            ${invoice.hosted_invoice_url ? `
+                                <a href="${invoice.hosted_invoice_url}" target="_blank" 
+                                   class="text-blue-600 hover:underline text-sm">
+                                    View PDF
+                                </a>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading invoices:', error);
+                document.getElementById('recent-invoices').innerHTML = 
+                    '<p class="text-red-500">Failed to load invoices</p>';
+            }
+        }
+        
+        // Select plan for subscription
+        function selectPlan(planId, planName, amount) {
+            selectedPlan = { id: planId, name: planName, amount: amount };
+            
+            // Update selected plan info
+            document.getElementById('selected-plan-info').innerHTML = `
+                <strong>${planName}</strong><br>
+                ${billingClient.formatPrice(amount)} per month
+            `;
+            
+            // Setup payment form
+            setupPaymentForm();
+            
+            // Show modal
+            document.getElementById('payment-form-modal').classList.remove('hidden');
+        }
+        
+        // Setup payment form
+        function setupPaymentForm() {
+            // Setup Stripe card element
+            billingClient.setupCardElement('card-element');
+            
+            // Handle form submission
+            document.getElementById('payment-form').addEventListener('submit', handlePaymentSubmission);
+        }
+        
+        // Handle payment form submission
+        async function handlePaymentSubmission(event) {
+            event.preventDefault();
+            
+            if (!selectedPlan) {
+                alert('No plan selected');
+                return;
+            }
+            
+            const submitButton = document.getElementById('submit-payment');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Processing...';
+            
+            try {
+                // Get the price ID for the selected plan
+                const priceId = `price_${selectedPlan.id}`;
+                
+                // Subscribe with payment
+                await billingClient.subscribeWithPayment(priceId);
+                
+                // Success - close modal and refresh
+                closePaymentModal();
+                location.reload();
+                
+            } catch (error) {
+                console.error('Payment error:', error);
+                document.getElementById('card-errors').textContent = error.message;
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Subscribe';
+            }
+        }
+        
+        // Close payment modal
+        function closePaymentModal() {
+            document.getElementById('payment-form-modal').classList.add('hidden');
+            selectedPlan = null;
+            document.getElementById('card-errors').textContent = '';
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Simple notification - you can enhance this
+            alert(message);
+        }
+    </script>
+</body>
+</html>

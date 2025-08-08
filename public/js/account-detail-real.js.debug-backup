@@ -1,0 +1,640 @@
+// Account Detail Page - Real Data Implementation
+class RealAccountDetail {
+    constructor() {
+        this.token = null;
+        this.accountId = null;
+        this.account = null;
+        this.deals = [];
+        this.positions = [];
+        this.metrics = null;
+        this.tradingCharts = new TradingCharts();
+        this.loadingStates = new Set();
+        this.init();
+    }
+
+    async init() {
+        // Get account ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        this.accountId = urlParams.get('id');
+        
+        if (!this.accountId) {
+            window.location.href = '/accounts';
+            return;
+        }
+
+        // Get token and set up API client
+        this.token = localStorage.getItem('authToken');
+        if (this.token) {
+            apiClient.setToken(this.token);
+        }
+
+        if (!this.token || !(await this.checkAuth())) {
+            window.location.href = '/?auth=required';
+            return;
+        }
+
+        this.initializeEventListeners();
+        await this.loadUserData();
+        await this.loadAccountData();
+        this.setupRealTimeUpdates();
+    }
+
+    async checkAuth() {
+        try {
+            const response = await apiClient.request('/auth/me');
+            this.user = response;
+            return true;
+        } catch (error) {
+            console.error('Auth check failed:', error);
+            return false;
+        }
+    }
+
+    initializeEventListeners() {
+        // User menu
+        const userMenuBtn = document.getElementById('userMenuBtn');
+        const userDropdown = document.getElementById('userDropdown');
+        
+        if (userMenuBtn) {
+            userMenuBtn.addEventListener('click', () => {
+                userDropdown.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!userMenuBtn.contains(e.target)) {
+                    userDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        // Logout
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
+        }
+
+        // Refresh button
+        const refreshBtn = document.getElementById('refreshAccount');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                this.refreshAccountData();
+            });
+        }
+
+        // Back to accounts button
+        const backBtn = document.getElementById('backToAccounts');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                window.location.href = '/accounts';
+            });
+        }
+
+        // Period selection buttons
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.period-btn').forEach(b => {
+                    b.classList.remove('bg-primary', 'text-white');
+                    b.classList.add('bg-gray-100', 'text-gray-700');
+                });
+                btn.classList.add('bg-primary', 'text-white');
+                btn.classList.remove('bg-gray-100', 'text-gray-700');
+
+                const period = btn.getAttribute('data-period');
+                this.loadAccountData(period);
+            });
+        });
+    }
+
+    async loadUserData() {
+        if (!this.user) return;
+
+        const userEmailEl = document.getElementById('userEmail');
+        const userAvatarEl = document.getElementById('userAvatar');
+
+        if (userEmailEl) userEmailEl.textContent = this.user.email;
+        if (userAvatarEl) {
+            userAvatarEl.src = this.user.picture || 
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(this.user.name || this.user.email)}&background=1e40af&color=fff`;
+        }
+
+        if (this.user.isAdmin) {
+            const adminMenu = document.getElementById('adminMenu');
+            if (adminMenu) adminMenu.classList.remove('hidden');
+        }
+    }
+
+    async loadAccountData(period = '30d') {
+        try {
+            this.showLoading('account');
+
+            // Load account details, deals, positions, and metrics in parallel
+            const [accountData, dealsData, positionsData, metricsData] = await Promise.all([
+                apiClient.getAccountDetails(this.accountId, false),
+                this.loadAccountDeals(period),
+                this.loadAccountPositions(),
+                this.loadAccountMetrics(period)
+            ]);
+
+            this.account = accountData.account || accountData;
+            this.deals = dealsData.deals || [];
+            this.positions = positionsData.positions || [];
+            this.metrics = metricsData;
+
+            // Update UI
+            await this.updateAccountInfo();
+            await this.updateMetrics();
+            await this.updateDealsTable();
+            await this.updatePositionsTable();
+            await this.updateCharts();
+
+        } catch (error) {
+            console.error('Error loading account data:', error);
+            this.showError('Failed to load account data. Please refresh the page.');
+        } finally {
+            this.hideLoading('account');
+        }
+    }
+
+    async loadAccountDeals(period = '30d') {
+        try {
+            if (this.account?.connectionMethod === 'metaapi' && this.account?.metaApiAccountId) {
+                return await apiClient.getAccountDeals(this.account.metaApiAccountId, {
+                    period: period,
+                    limit: 1000
+                });
+            } else {
+                // For manual accounts, we might not have deals data
+                return { deals: [] };
+            }
+        } catch (error) {
+            console.error('Error loading deals:', error);
+            return { deals: [] };
+        }
+    }
+
+    async loadAccountPositions() {
+        try {
+            if (this.account?.connectionMethod === 'metaapi' && this.account?.metaApiAccountId) {
+                return await apiClient.getAccountPositions(this.account.metaApiAccountId, false);
+            } else {
+                return { positions: [] };
+            }
+        } catch (error) {
+            console.error('Error loading positions:', error);
+            return { positions: [] };
+        }
+    }
+
+    async loadAccountMetrics(period = '30d') {
+        try {
+            if (this.account?.connectionMethod === 'metaapi' && this.account?.metaApiAccountId) {
+                return await apiClient.getAccountMetrics(this.account.metaApiAccountId, period);
+            } else {
+                // Calculate metrics from available account data
+                return this.calculateManualMetrics();
+            }
+        } catch (error) {
+            console.error('Error loading metrics:', error);
+            return this.calculateManualMetrics();
+        }
+    }
+
+    calculateManualMetrics() {
+        const balance = parseFloat(this.account?.currentBalance || 0);
+        const equity = parseFloat(this.account?.equity || balance);
+        const initialBalance = parseFloat(this.account?.initialBalance || balance);
+        const profit = equity - initialBalance;
+
+        // Calculate metrics from deals if available
+        const calculatedMetrics = this.deals.length > 0 ? 
+            TradingStatistics.calculateMetrics(this.deals, initialBalance) :
+            TradingStatistics.getEmptyMetrics();
+
+        return {
+            balance: balance,
+            equity: equity,
+            profit: profit,
+            initialBalance: initialBalance,
+            ...calculatedMetrics
+        };
+    }
+
+    async updateAccountInfo() {
+        try {
+            // Update account header
+            const accountNameEl = document.getElementById('accountName');
+            const accountStatusEl = document.getElementById('accountStatus');
+            const accountDetailsEl = document.getElementById('accountDetails');
+
+            if (accountNameEl) {
+                accountNameEl.textContent = this.account.accountName || 'Unnamed Account';
+            }
+
+            if (accountStatusEl) {
+                const isConnected = this.account.connectionMethod === 'metaapi';
+                accountStatusEl.innerHTML = `
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                        isConnected 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                    }">
+                        <i class="fas fa-${isConnected ? 'link' : 'edit'} mr-2"></i>
+                        ${isConnected ? 'Connected' : 'Manual Entry'}
+                    </span>
+                `;
+            }
+
+            if (accountDetailsEl) {
+                accountDetailsEl.innerHTML = `
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-500">Login:</span>
+                            <span class="ml-1 font-medium">${this.account.login || 'N/A'}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Platform:</span>
+                            <span class="ml-1 font-medium">${this.account.accountType?.toUpperCase() || 'N/A'}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Broker:</span>
+                            <span class="ml-1 font-medium">${this.account.brokerName || this.account.serverName || 'N/A'}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Server:</span>
+                            <span class="ml-1 font-medium">${this.account.serverName || 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+        } catch (error) {
+            console.error('Error updating account info:', error);
+        }
+    }
+
+    async updateMetrics() {
+        if (!this.metrics) return;
+
+        try {
+            // Update balance
+            const balanceEl = document.getElementById('metricBalance');
+            if (balanceEl) {
+                balanceEl.textContent = TradingStatistics.formatMetric(this.metrics.balance, 'currency');
+            }
+
+            // Update equity
+            const equityEl = document.getElementById('metricEquity');
+            if (equityEl) {
+                equityEl.textContent = TradingStatistics.formatMetric(this.metrics.equity, 'currency');
+            }
+
+            // Update P&L
+            const pnlEl = document.getElementById('metricPnL');
+            const profitIconEl = document.getElementById('profitIcon');
+            if (pnlEl && profitIconEl) {
+                const profit = this.metrics.profit || 0;
+                
+                pnlEl.textContent = TradingStatistics.formatMetric(profit, 'currency');
+                pnlEl.className = `text-2xl font-semibold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`;
+                
+                profitIconEl.className = `flex-shrink-0 ${profit >= 0 ? 'bg-green-100' : 'bg-red-100'} rounded-full p-3`;
+                profitIconEl.innerHTML = `<i class="fas fa-arrow-${profit >= 0 ? 'up' : 'down'} text-2xl ${profit >= 0 ? 'text-green-600' : 'text-red-600'}"></i>`;
+            }
+
+            // Update win rate
+            const winRateEl = document.getElementById('metricWinRate');
+            if (winRateEl) {
+                winRateEl.textContent = TradingStatistics.formatMetric(this.metrics.winRate, 'percentage');
+            }
+
+            // Update additional metrics
+            const totalTradesEl = document.getElementById('metricTotalTrades');
+            if (totalTradesEl) {
+                totalTradesEl.textContent = TradingStatistics.formatMetric(this.metrics.totalTrades, 'integer');
+            }
+
+            const profitFactorEl = document.getElementById('metricProfitFactor');
+            if (profitFactorEl) {
+                const pf = this.metrics.profitFactor || 0;
+                profitFactorEl.textContent = isFinite(pf) ? TradingStatistics.formatMetric(pf, 'ratio') : '∞';
+            }
+
+            const maxDrawdownEl = document.getElementById('metricMaxDrawdown');
+            if (maxDrawdownEl) {
+                maxDrawdownEl.textContent = TradingStatistics.formatMetric(this.metrics.maxDrawdownPercent, 'percentage');
+            }
+
+            const sharpeRatioEl = document.getElementById('metricSharpeRatio');
+            if (sharpeRatioEl) {
+                sharpeRatioEl.textContent = TradingStatistics.formatMetric(this.metrics.sharpeRatio, 'ratio');
+            }
+
+        } catch (error) {
+            console.error('Error updating metrics:', error);
+        }
+    }
+
+    async updateDealsTable() {
+        try {
+            const tbody = document.getElementById('transactionsTableBody');
+            if (!tbody) return;
+
+            if (this.deals.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                            No trading history available
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Sort deals by time (most recent first)
+            const sortedDeals = [...this.deals].sort((a, b) => 
+                new Date(b.time || b.brokerTime) - new Date(a.time || a.brokerTime)
+            );
+
+            tbody.innerHTML = sortedDeals.slice(0, 100).map(deal => {
+                const profit = parseFloat(deal.profit || 0);
+                const commission = parseFloat(deal.commission || 0);
+                const swap = parseFloat(deal.swap || 0);
+                const netProfit = profit + commission + swap;
+                
+                const date = new Date(deal.time || deal.brokerTime);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formattedDate}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.symbol}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span class="px-2 py-1 text-xs rounded-full ${
+                                deal.type?.includes('BUY') || deal.type?.includes('LONG') ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
+                            }">
+                                ${deal.type?.replace('DEAL_TYPE_', '') || 'N/A'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${parseFloat(deal.volume || 0).toFixed(2)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${parseFloat(deal.price || deal.openPrice || 0).toFixed(5)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${netProfit >= 0 ? '+' : ''}${TradingStatistics.formatMetric(netProfit, 'currency')}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${TradingStatistics.formatMetric(commission, 'currency')}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+        } catch (error) {
+            console.error('Error updating deals table:', error);
+        }
+    }
+
+    async updatePositionsTable() {
+        try {
+            const tbody = document.getElementById('positionsTableBody');
+            if (!tbody) return;
+
+            if (this.positions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                            No open positions
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = this.positions.map(position => {
+                const unrealizedProfit = parseFloat(position.unrealizedProfit || position.profit || 0);
+                const openTime = new Date(position.time || position.openTime);
+                
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${position.symbol}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span class="px-2 py-1 text-xs rounded-full ${
+                                position.type?.includes('BUY') || position.type?.includes('LONG') ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
+                            }">
+                                ${position.type?.replace('POSITION_TYPE_', '') || 'N/A'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${parseFloat(position.volume || 0).toFixed(2)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${parseFloat(position.openPrice || 0).toFixed(5)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${parseFloat(position.currentPrice || 0).toFixed(5)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${unrealizedProfit >= 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${unrealizedProfit >= 0 ? '+' : ''}${TradingStatistics.formatMetric(unrealizedProfit, 'currency')}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+        } catch (error) {
+            console.error('Error updating positions table:', error);
+        }
+    }
+
+    async updateCharts() {
+        try {
+            await Promise.all([
+                this.updatePLChart(),
+                this.updateEquityChart(),
+                this.updateDrawdownChart()
+            ]);
+        } catch (error) {
+            console.error('Error updating charts:', error);
+        }
+    }
+
+    async updatePLChart() {
+        try {
+            const chartContainer = document.getElementById('plChart');
+            if (!chartContainer) return;
+
+            // Clear existing chart
+            this.tradingCharts.removeChart('plChart');
+
+            if (this.deals.length === 0) {
+                chartContainer.innerHTML = '<div class="flex items-center justify-center h-64 text-gray-500">No trading data available</div>';
+                return;
+            }
+
+            // Generate P&L history from deals
+            const plHistory = TradingStatistics.generatePLHistory(this.deals, this.metrics?.initialBalance || 10000);
+            
+            this.tradingCharts.createProfitLossChart('plChart', plHistory, {
+                height: 300
+            });
+
+        } catch (error) {
+            console.error('Error updating P&L chart:', error);
+        }
+    }
+
+    async updateEquityChart() {
+        try {
+            const chartContainer = document.getElementById('equityChart');
+            if (!chartContainer) return;
+
+            // Clear existing chart
+            this.tradingCharts.removeChart('equityChart');
+
+            if (this.deals.length === 0) {
+                chartContainer.innerHTML = '<div class="flex items-center justify-center h-64 text-gray-500">No equity data available</div>';
+                return;
+            }
+
+            // Generate equity curve
+            const plHistory = TradingStatistics.generatePLHistory(this.deals, this.metrics?.initialBalance || 10000);
+            const equityData = {
+                balance: plHistory.map(item => ({
+                    time: item.time,
+                    value: item.balance
+                })),
+                equity: plHistory.map(item => ({
+                    time: item.time,
+                    value: item.balance // For now, assume balance = equity for closed trades
+                }))
+            };
+
+            this.tradingCharts.createEquityCurveChart('equityChart', equityData, {
+                height: 300
+            });
+
+        } catch (error) {
+            console.error('Error updating equity chart:', error);
+        }
+    }
+
+    async updateDrawdownChart() {
+        try {
+            const chartContainer = document.getElementById('drawdownChart');
+            if (!chartContainer) return;
+
+            // Clear existing chart
+            this.tradingCharts.removeChart('drawdownChart');
+
+            if (!this.metrics?.drawdownHistory || this.metrics.drawdownHistory.length === 0) {
+                chartContainer.innerHTML = '<div class="flex items-center justify-center h-64 text-gray-500">No drawdown data available</div>';
+                return;
+            }
+
+            this.tradingCharts.createDrawdownChart('drawdownChart', this.metrics.drawdownHistory, {
+                height: 250
+            });
+
+        } catch (error) {
+            console.error('Error updating drawdown chart:', error);
+        }
+    }
+
+    async refreshAccountData() {
+        try {
+            this.showLoading('refresh');
+            
+            // Clear cache for this account
+            await apiClient.refreshAccountData(this.accountId);
+            
+            // Reload all data
+            await this.loadAccountData();
+            
+            this.showSuccess('Account data refreshed');
+        } catch (error) {
+            console.error('Error refreshing account data:', error);
+            this.showError('Failed to refresh account data');
+        } finally {
+            this.hideLoading('refresh');
+        }
+    }
+
+    setupRealTimeUpdates() {
+        // Update account data every 2 minutes for connected accounts
+        if (this.account?.connectionMethod === 'metaapi') {
+            setInterval(async () => {
+                try {
+                    await this.loadAccountData();
+                } catch (error) {
+                    console.error('Real-time update failed:', error);
+                }
+            }, 2 * 60 * 1000); // 2 minutes
+        }
+    }
+
+    // UI Helper Methods
+    showLoading(context) {
+        this.loadingStates.add(context);
+        const loadingEl = document.getElementById('loadingState');
+        if (loadingEl) loadingEl.classList.remove('hidden');
+    }
+
+    hideLoading(context) {
+        this.loadingStates.delete(context);
+        if (this.loadingStates.size === 0) {
+            const loadingEl = document.getElementById('loadingState');
+            if (loadingEl) loadingEl.classList.add('hidden');
+            const accountContent = document.getElementById("accountContent");
+            if (accountContent) accountContent.classList.remove("hidden");
+        }
+    }
+
+    showError(message) {
+        this.showMessage(message, 'error');
+    }
+
+    showSuccess(message) {
+        this.showMessage(message, 'success');
+    }
+
+    showMessage(message, type) {
+        // Remove existing message
+        const existingMessage = document.querySelector('.notification-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+
+        // Create new message
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `notification-message fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+            type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+        }`;
+        messageDiv.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'} mr-2"></i>${message}`;
+        document.body.appendChild(messageDiv);
+
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 5000);
+    }
+
+    async logout() {
+        try {
+            await apiClient.logout();
+        } catch (error) {
+            console.error('Logout error:', error);
+            localStorage.removeItem('authToken');
+            window.location.href = '/';
+        }
+    }
+
+    // Cleanup method
+    cleanup() {
+        this.tradingCharts.cleanup();
+    }
+}
+
+// Initialize account detail when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.accountDetail = new RealAccountDetail();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (window.accountDetail) {
+        window.accountDetail.cleanup();
+    }
+});

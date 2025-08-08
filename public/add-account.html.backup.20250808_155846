@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Trading Account - FX True Up</title>
+    <meta name="description" content="Connect your MT4/MT5 trading account">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Configure Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#1e40af",
+                        secondary: "#3b82f6", 
+                        accent: "#10b981",
+                        dark: "#1f2937"
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Debug styles -->
+    <style>
+        /* Ensure hidden class works properly */
+        .hidden { display: none !important; }
+        /* Debug - temporarily show all fields */
+        #metaApiFields { display: block !important; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <img src="/images/fxtrueup-logo-transparent.png" alt="FX True Up" style="height: 60px !important; width: auto;">
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="/dashboard" class="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                    <a href="/accounts" class="text-primary px-3 py-2 rounded-md text-sm font-medium">Accounts</a>
+                    <a href="/analytics" class="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">Analytics</a>
+                    <div id="adminMenu" class="hidden">
+                        <a href="/admin" class="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">Admin</a>
+                    </div>
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary">
+                            <img id="userAvatar" class="h-8 w-8 rounded-full" src="" alt="">
+                            <span id="userEmail" class="ml-2 text-gray-700"></span>
+                            <i class="fas fa-chevron-down ml-2 text-gray-500"></i>
+                        </button>
+                        <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5">
+                            <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
+                            <a href="/subscription" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Subscription</a>
+                            <hr class="my-1">
+                            <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Add Trading Account</h1>
+                    <p class="text-gray-600">Connect your MT4/MT5 account to start tracking performance</p>
+                </div>
+                <a href="/accounts" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition duration-150">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Accounts
+                </a>
+            </div>
+
+            <!-- Add Account Form -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <form id="addAccountForm" class="space-y-6">
+                    <!-- Connection Method -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Connection Method</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary transition duration-150" onclick="selectConnectionMethod('metaapi')">
+                                <div class="flex items-center">
+                                    <input type="radio" name="connectionMethod" value="metaapi" class="h-4 w-4 text-primary focus:ring-primary border-gray-300">
+                                    <div class="ml-3">
+                                        <h3 class="text-lg font-medium text-gray-900">MetaApi (Recommended)</h3>
+                                        <p class="text-sm text-gray-500">Direct connection via MetaApi cloud service</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary transition duration-150" onclick="selectConnectionMethod('manual')">
+                                <div class="flex items-center">
+                                    <input type="radio" name="connectionMethod" value="manual" class="h-4 w-4 text-primary focus:ring-primary border-gray-300">
+                                    <div class="ml-3">
+                                        <h3 class="text-lg font-medium text-gray-900">Manual Entry</h3>
+                                        <p class="text-sm text-gray-500">Enter account details manually</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Details -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="accountName" class="block text-sm font-medium text-gray-700">Account Name *</label>
+                            <input type="text" id="accountName" name="accountName" required
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                   placeholder="e.g., Main Trading Account">
+                        </div>
+                        <div>
+                            <label for="accountType" class="block text-sm font-medium text-gray-700">Platform *</label>
+                            <select id="accountType" name="accountType" required
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                <option value="">Select Platform</option>
+                                <option value="mt4">MetaTrader 4</option>
+                                <option value="mt5">MetaTrader 5</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="login" class="block text-sm font-medium text-gray-700">Login (Account Number) *</label>
+                            <input type="text" id="login" name="login" required
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                   placeholder="123456789">
+                        </div>
+                        <div>
+                            <label for="serverName" class="block text-sm font-medium text-gray-700">Server *</label>
+                            <input type="text" id="serverName" name="serverName" required
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                   placeholder="BrokerName-Live">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="brokerName" class="block text-sm font-medium text-gray-700">Broker Name</label>
+                            <input type="text" id="brokerName" name="brokerName"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                   placeholder="e.g., IC Markets, FTMO, etc.">
+                        </div>
+                        <div>
+                            <label for="accountRegion" class="block text-sm font-medium text-gray-700">Region</label>
+                            <select id="accountRegion" name="accountRegion"
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                <option value="">Select Region</option>
+                                <option value="new-york">New York</option>
+                                <option value="london">London</option>
+                                <option value="singapore">Singapore</option>
+                                <option value="sydney">Sydney</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- MetaApi specific fields -->
+                    <div id="metaApiFields" class="hidden space-y-6">
+                        <div class="border-t pt-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">MetaApi Integration</h3>
+                            
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                <div class="flex">
+                                    <i class="fas fa-info-circle text-blue-500 mt-0.5 mr-3"></i>
+                                    <div>
+                                        <h4 class="text-sm font-medium text-blue-900">Centralized MetaApi Management</h4>
+                                        <p class="text-sm text-blue-700 mt-1">We manage all MetaApi connections through our secure, centralized system. Simply provide your MT4/MT5 account credentials - no need to create your own MetaApi account or manage API tokens.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="password" class="block text-sm font-medium text-gray-700">Account Password *</label>
+                                    <input type="password" id="password" name="password"
+                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                           placeholder="Trading account password">
+                                    <p class="mt-1 text-sm text-gray-500">Your MT4/MT5 account password (encrypted & secure)</p>
+                                </div>
+                                <div>
+                                    <label for="readOnlyPassword" class="block text-sm font-medium text-gray-700">Investor Password</label>
+                                    <input type="password" id="readOnlyPassword" name="readOnlyPassword"
+                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                           placeholder="Read-only password (optional)">
+                                    <p class="mt-1 text-sm text-gray-500">Safer option - read-only access if available</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="magic" class="block text-sm font-medium text-gray-700">Magic Number</label>
+                                    <input type="number" id="magic" name="magic"
+                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                           placeholder="12345">
+                                    <p class="mt-1 text-sm text-gray-500">Optional: For filtering specific EA trades</p>
+                                </div>
+                                <div>
+                                    <label for="riskManagementApiEnabled" class="block text-sm font-medium text-gray-700">Risk Management</label>
+                                    <select id="riskManagementApiEnabled" name="riskManagementApiEnabled"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                        <option value="false">Disabled</option>
+                                        <option value="true">Enabled</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="baseCurrency" class="block text-sm font-medium text-gray-700">Base Currency</label>
+                                    <select id="baseCurrency" name="baseCurrency"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                        <option value="">Auto-detect</option>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="GBP">GBP</option>
+                                        <option value="JPY">JPY</option>
+                                        <option value="AUD">AUD</option>
+                                        <option value="CAD">CAD</option>
+                                        <option value="CHF">CHF</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="copyFactoryRoles" class="block text-sm font-medium text-gray-700">CopyFactory Role</label>
+                                    <select id="copyFactoryRoles" name="copyFactoryRoles"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                        <option value="">None</option>
+                                        <option value="PROVIDER">Provider (Master)</option>
+                                        <option value="SUBSCRIBER">Subscriber (Follower)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Entry Fields -->
+                    <div id="manualFields" class="hidden space-y-6">
+                        <div class="border-t pt-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Manual Account Details</h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label for="initialBalance" class="block text-sm font-medium text-gray-700">Initial Balance</label>
+                                    <div class="mt-1 relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                        </div>
+                                        <input type="number" id="initialBalance" name="initialBalance" step="0.01"
+                                               class="pl-7 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                               placeholder="10000.00">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="currentBalance" class="block text-sm font-medium text-gray-700">Current Balance</label>
+                                    <div class="mt-1 relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                        </div>
+                                        <input type="number" id="currentBalance" name="currentBalance" step="0.01"
+                                               class="pl-7 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                               placeholder="10000.00">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="equity" class="block text-sm font-medium text-gray-700">Equity</label>
+                                    <div class="mt-1 relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                        </div>
+                                        <input type="number" id="equity" name="equity" step="0.01"
+                                               class="pl-7 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                               placeholder="10000.00">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Categories & Tags -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">Account Categories</label>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <!-- Account Type Categories -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-600 mb-2">ACCOUNT TYPE</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="live" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Live</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="demo" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Demo</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="prop-firm" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Prop Firm</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Trading Style Categories -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-600 mb-2">TRADING STYLE</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="scalping" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Scalping</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="day-trading" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Day Trading</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="swing" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Swing</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="position" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Position</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Risk Level Categories -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-600 mb-2">RISK LEVEL</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="conservative" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Conservative</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="moderate" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Moderate</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="aggressive" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Aggressive</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="high-risk" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">High Risk</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Strategy Categories -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-600 mb-2">STRATEGY</h4>
+                                    <div class="space-y-1">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="manual" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Manual</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="ea" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">EA/Bot</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="copy-trading" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Copy Trading</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="categoryTags" value="signals" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                            <span class="ml-2 text-sm text-gray-700">Signals</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="customTags" class="block text-sm font-medium text-gray-700">Custom Tags</label>
+                            <input type="text" id="customTags" name="customTags"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                   placeholder="e.g., testing, backup, challenge-phase1">
+                            <p class="mt-1 text-sm text-gray-500">Add custom tags separated by commas</p>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div>
+                        <label for="accountNotes" class="block text-sm font-medium text-gray-700">Private Notes</label>
+                        <textarea id="accountNotes" name="accountNotes" rows="3"
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                  placeholder="Add any private notes about this account..."></textarea>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="window.location.href='/accounts'"
+                                class="bg-gray-200 text-gray-700 px-6 py-2 rounded-md font-medium hover:bg-gray-300 transition duration-150">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="bg-primary text-white px-6 py-2 rounded-md font-medium hover:bg-secondary transition duration-150">
+                            <i class="fas fa-plus mr-2"></i>Add Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Help Section -->
+            <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h3 class="text-lg font-medium text-blue-900 mb-4">How It Works</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <h4 class="font-medium text-blue-800 mb-2">MetaApi Integration</h4>
+                        <ul class="text-blue-700 space-y-1">
+                            <li>• No MetaApi account setup required</li>
+                            <li>• We handle all API token management</li>
+                            <li>• Enterprise-grade security & encryption</li>
+                            <li>• Real-time data sync across all accounts</li>
+                            <li>• Compatible with 500+ MT4/MT5 brokers</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-blue-800 mb-2">Manual Entry</h4>
+                        <ul class="text-blue-700 space-y-1">
+                            <li>• Perfect for demo accounts or testing</li>
+                            <li>• No account credentials required</li>
+                            <li>• Manual balance and performance updates</li>
+                            <li>• Good for portfolio overview</li>
+                            <li>• Can upgrade to MetaApi later</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded">
+                    <p class="text-green-800 text-sm">
+                        <i class="fas fa-shield-alt mr-2"></i>
+                        <strong>Security:</strong> All account credentials are encrypted using industry-standard security. We never store passwords in plain text and follow strict data protection protocols.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- JavaScript -->
+    <script src="/js/add-account.js"></script>
+</body>
+</html>

@@ -1,50 +1,60 @@
-# Dependencies
-node_modules/
-npm-debug.log
-yarn-error.log
-
 # Environment files
 .env
-.env.local
-.env.production
-.env.development
+.env.*
+\!.env.template
 
 # Logs
 logs/
 *.log
+npm-debug.log*
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# Node modules
+node_modules/
 
-# IDE
+# Build output
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
-.DS_Store
-Thumbs.db
+# Backup files
+*.backup
+*.backup-*
+*.bak
 
-# Build
-dist/
-build/
+# MetaAPI cache
+.metaapi/
 
-# Testing
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test coverage
 coverage/
-.nyc_output
+
+# Temporary files
+tmp/
+temp/
+*.tmp
 
 # PM2
 .pm2/
-ecosystem.config.js
 
-# MetaApi
-metaapi-credentials.json
-metaapi-accounts.json
-
-# Temporary files
-*.tmp
-*.temp
+# Documentation files (temporary)
+AUTHENTICATION_FIX_SUMMARY.md
+BILLING_SETUP.md
+CRITICAL_SECURITY_FIXES.md
+DEPLOYMENT_REPORT.md
+TODO.md
+PM2_STARTUP.md
+SECURITY_FIXES_DEPLOYED.md
+SERVER_CONSOLIDATION.md

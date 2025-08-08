@@ -9,6 +9,8 @@ const dotenv = require('dotenv');
 const path = require('path');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const multer = require("multer");
+const CSVTradeHandler = require("./csv-trade-handler.cjs");
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +36,21 @@ const isDevelopment = NODE_ENV === 'development';
 
 // Initialize services
 const metaApiService = new MetaApiService();
+// Initialize CSV trade handler
+const csvTradeHandler = new CSVTradeHandler(metaApiService.cache);
+
+// Configure multer for file uploads
+const upload = multer({ 
+  dest: "uploads/",
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "text/csv" || file.originalname.endsWith(".csv")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only CSV files are allowed"));
+    }
+  }
+});
 
 // Security middleware configuration
 const securityConfig = {

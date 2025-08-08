@@ -1,0 +1,17 @@
+{
+  "timestamp": 1754541371399,
+  "value": {
+    "balance": 5091.08,
+    "equity": 5091.08,
+    "profit": 0,
+    "totalDeals": 0,
+    "winRate": 0,
+    "profitFactor": 0,
+    "openPositions": 0,
+    "margin": 0,
+    "freeMargin": 5091.08,
+    "marginLevel": 0,
+    "leverage": 500,
+    "currency": "USD"
+  }
+}

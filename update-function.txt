@@ -1,0 +1,26 @@
+    async updateSubscriptionStatus(stripeSubscriptionId, status, additionalFields = {}) {
+        return new Promise((resolve, reject) => {
+            let setClause = 'status = ?, updated_at = CURRENT_TIMESTAMP';
+            let params = [status];
+
+            Object.entries(additionalFields).forEach(([key, value]) => {
+                setClause += `, ${key} = ?`;
+                params.push(value);
+            });
+
+            params.push(stripeSubscriptionId);
+
+            this.db.run(
+                `UPDATE user_subscriptions SET ${setClause} WHERE stripe_subscription_id = ?`,
+                params,
+                (err) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                }
+            );
+        });
+    }
+

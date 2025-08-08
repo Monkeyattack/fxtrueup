@@ -1,0 +1,53 @@
+{
+  "timestamp": 1754537316115,
+  "value": [
+    {
+      "id": "164812040",
+      "time": "2025-07-18T14:00:00.000Z",
+      "symbol": "XAUUSD",
+      "type": "DEAL_TYPE_BUY",
+      "volume": 0.13,
+      "price": 3356.45,
+      "commission": 0,
+      "swap": 0,
+      "profit": 0,
+      "comment": "GoldEA_Pivot[sl]"
+    },
+    {
+      "id": "164812040",
+      "time": "2025-07-18T19:32:01.000Z",
+      "symbol": "XAUUSD",
+      "type": "DEAL_TYPE_SELL",
+      "volume": 0.13,
+      "price": 3349.61,
+      "commission": 0,
+      "swap": 0,
+      "profit": -88.92,
+      "comment": "GoldEA_Pivot[sl]"
+    },
+    {
+      "id": "164842986",
+      "time": "2025-07-21T08:00:00.000Z",
+      "symbol": "XAUUSD",
+      "type": "DEAL_TYPE_BUY",
+      "volume": 0.12,
+      "price": 3364.86,
+      "commission": 0,
+      "swap": 0,
+      "profit": 0,
+      "comment": "GoldEA_Pivot[tp]"
+    },
+    {
+      "id": "164842986",
+      "time": "2025-07-21T12:21:33.000Z",
+      "symbol": "XAUUSD",
+      "type": "DEAL_TYPE_SELL",
+      "volume": 0.12,
+      "price": 3379.86,
+      "commission": 0,
+      "swap": 0,
+      "profit": 180,
+      "comment": "GoldEA_Pivot[tp]"
+    }
+  ]
+}

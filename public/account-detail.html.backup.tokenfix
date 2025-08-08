@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Details - FX True Up</title>
+    <meta name="description" content="View detailed trading account information">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Lightweight Charts for real-time trading charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <!-- Chart.js for compatibility -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Configure Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#1e40af",
+                        secondary: "#3b82f6", 
+                        accent: "#10b981",
+                        dark: "#1f2937"
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <img src="/images/fxtrueup-logo-transparent.png" alt="FX True Up" style="height: 60px !important; width: auto;">
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="/dashboard" class="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                    <a href="/accounts" class="text-primary px-3 py-2 rounded-md text-sm font-medium">Accounts</a>
+                    <a href="/analytics" class="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">Analytics</a>
+                    <div id="adminMenu" class="hidden">
+                        <a href="/admin" class="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">Admin</a>
+                    </div>
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary">
+                            <img id="userAvatar" class="h-8 w-8 rounded-full" src="" alt="">
+                            <span id="userEmail" class="ml-2 text-gray-700"></span>
+                            <i class="fas fa-chevron-down ml-2 text-gray-500"></i>
+                        </button>
+                        <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5">
+                            <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
+                            <a href="/subscription" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Subscription</a>
+                            <hr class="my-1">
+                            <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900" id="accountName">Loading...</h1>
+                    <p class="text-gray-600" id="accountInfo"></p>
+                </div>
+                <a href="/accounts" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition duration-150">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Accounts
+                </a>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-500">Loading account data...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" class="hidden bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+                <h3 class="text-lg font-medium text-red-900 mb-2">Unable to Load Account Data</h3>
+                <p class="text-red-700" id="errorMessage">Failed to load real-time data</p>
+                <button onclick="location.reload()" class="mt-4 bg-red-100 text-red-700 px-4 py-2 rounded-md hover:bg-red-200">
+                    <i class="fas fa-redo mr-2"></i>Retry
+                </button>
+            </div>
+
+            <!-- Account Content -->
+            <div id="accountContent" class="hidden space-y-6">
+                <!-- Account Metrics -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-blue-100 rounded-full p-3">
+                                <i class="fas fa-wallet text-2xl text-blue-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Balance</p>
+                                <p class="text-2xl font-semibold text-gray-900" id="metricBalance">$0.00</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-green-100 rounded-full p-3">
+                                <i class="fas fa-chart-line text-2xl text-green-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Equity</p>
+                                <p class="text-2xl font-semibold text-gray-900" id="metricEquity">$0.00</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-yellow-100 rounded-full p-3">
+                                <i class="fas fa-percentage text-2xl text-yellow-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Win Rate</p>
+                                <p class="text-2xl font-semibold text-gray-900" id="metricWinRate">0%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 rounded-full p-3" id="profitIcon">
+                                <i class="fas fa-dollar-sign text-2xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Total P&L</p>
+                                <p class="text-2xl font-semibold" id="metricPnL">$0.00</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex" aria-label="Tabs">
+                            <button onclick="switchTab('transactions')" id="transactionsTab" 
+                                    class="tab-button w-1/4 py-2 px-1 text-center border-b-2 font-medium text-sm border-primary text-primary">
+                                <i class="fas fa-exchange-alt mr-2"></i>Transactions
+                            </button>
+                            <button onclick="switchTab('positions')" id="positionsTab" 
+                                    class="tab-button w-1/4 py-2 px-1 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                                <i class="fas fa-chart-pie mr-2"></i>Open Positions
+                            </button>
+                            <button onclick="switchTab('pnl')" id="pnlTab" 
+                                    class="tab-button w-1/4 py-2 px-1 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                                <i class="fas fa-file-invoice-dollar mr-2"></i>P&L Statement
+                            </button>
+                            <button onclick="switchTab('analytics')" id="analyticsTab" 
+                                    class="tab-button w-1/4 py-2 px-1 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                                <i class="fas fa-chart-bar mr-2"></i>Analytics
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="p-6">
+                        <!-- Transactions Tab -->
+                        <div id="transactionsContent" class="tab-content">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-medium text-gray-900">Transaction History</h3>
+                                <div class="flex space-x-2">
+                                    <select id="transactionFilter" class="border-gray-300 rounded-md text-sm">
+                                        <option value="all">All Transactions</option>
+                                        <option value="profit">Profitable Only</option>
+                                        <option value="loss">Losses Only</option>
+                                    </select>
+                                    <button onclick="exportTransactions()" class="bg-primary text-white px-4 py-2 rounded-md text-sm hover:bg-secondary">
+                                        <i class="fas fa-download mr-2"></i>Export
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date/Time</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Volume</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Commission</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Swap</th>
+                                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">P&L</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="transactionsTableBody" class="bg-white divide-y divide-gray-200">
+                                        <!-- Transactions will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Positions Tab -->
+                        <div id="positionsContent" class="tab-content hidden">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Open Positions</h3>
+                            <div id="positionsContainer">
+                                <!-- Positions will be loaded here -->
+                            </div>
+                        </div>
+
+                        <!-- P&L Statement Tab -->
+                        <div id="pnlContent" class="tab-content hidden">
+                            <div class="space-y-6">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-lg font-medium text-gray-900">Profit & Loss Statement</h3>
+                                    <div class="flex space-x-2">
+                                        <select id="pnlPeriod" class="border-gray-300 rounded-md text-sm">
+                                            <option value="today">Today</option>
+                                            <option value="week">This Week</option>
+                                            <option value="month" selected>This Month</option>
+                                            <option value="year">This Year</option>
+                                            <option value="all">All Time</option>
+                                        </select>
+                                        <button onclick="exportPnL()" class="bg-primary text-white px-4 py-2 rounded-md text-sm hover:bg-secondary">
+                                            <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="pnlStatement" class="bg-gray-50 rounded-lg p-6">
+                                    <!-- P&L Statement will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analytics Tab -->
+                        <div id="analyticsContent" class="tab-content hidden">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Performance Analytics</h3>
+                            <div class="space-y-6">
+                                <!-- Equity Curve -->
+                                <div class="bg-white rounded-lg p-6 border">
+                                    <h4 class="text-lg font-medium text-gray-700 mb-4">Equity Curve</h4>
+                                    <div id="equityCurveChart" style="height: 400px;"></div>
+                                </div>
+                                
+                                <!-- Drawdown Chart -->
+                                <div class="bg-white rounded-lg p-6 border">
+                                    <h4 class="text-lg font-medium text-gray-700 mb-4">Drawdown %</h4>
+                                    <div id="drawdownChart" style="height: 300px;"></div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <!-- Monthly Performance -->
+                                    <div class="bg-white rounded-lg p-6 border">
+                                        <h4 class="text-md font-medium text-gray-700 mb-4">Monthly Performance</h4>
+                                        <div id="monthlyChart" style="height: 300px;"></div>
+                                    </div>
+                                    
+                                    <!-- Win/Loss Distribution -->
+                                    <div class="bg-white rounded-lg p-6 border">
+                                        <h4 class="text-md font-medium text-gray-700 mb-4">Win/Loss Distribution</h4>
+                                        <div id="distributionChart" style="height: 300px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Real Data Components -->
+    <script src="/js/utils/api-client.js"></script>
+    <script src="/js/utils/statistics.js"></script>
+    <script src="/js/charts/lightweight-charts.js"></script>
+    
+    <!-- Account Detail JavaScript -->
+    <script src="/js/account-detail-real.js"></script>
+</body>
+</html>

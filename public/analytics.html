@@ -13,7 +13,10 @@
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Chart.js for analytics -->
+    <!-- Lightweight Charts for real-time trading charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <!-- Chart.js for compatibility -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Configure Tailwind -->
@@ -219,7 +222,12 @@
         </div>
     </main>
 
+    <!-- Real Data Components -->
+    <script src="/js/utils/api-client.js?v=1754693134"></script>
+    <script src="/js/utils/statistics.js"></script>
+    <script src="/js/charts/lightweight-charts.js"></script>
+    
     <!-- Analytics JavaScript -->
-    <script src="/js/analytics.js"></script>
+    <script src="/js/analytics-real.js"></script>
 </body>
 </html>

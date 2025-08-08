@@ -1,0 +1,13 @@
+--- public/js/account-detail-real.js.orig
++++ public/js/account-detail-real.js
+@@ -420,7 +420,9 @@
+     hideLoading(context) {
+         this.loadingStates.delete(context);
+         if (this.loadingStates.size === 0) {
+-            const loadingEl = document.getElementById('loadingIndicator');
++            const loadingEl = document.getElementById('loadingState');
+             if (loadingEl) loadingEl.classList.add('hidden');
++            const accountContent = document.getElementById('accountContent');
++            if (accountContent) accountContent.classList.remove('hidden');
+         }
+     }

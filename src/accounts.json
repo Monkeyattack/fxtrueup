@@ -1,0 +1,108 @@
+{
+  "123": [
+    {
+      "id": "1",
+      "userId": "123",
+      "accountName": "Demo Scalping Account",
+      "accountType": "mt4",
+      "login": "123456789",
+      "serverName": "Demo-Server",
+      "brokerName": "IC Markets",
+      "accountRegion": "new-york",
+      "connectionMethod": "metaapi",
+      "password": "hidden_password",
+      "magic": 12345,
+      "riskManagementApiEnabled": false,
+      "baseCurrency": "USD",
+      "copyFactoryRoles": "",
+      "tags": [
+        "demo",
+        "scalping",
+        "ea",
+        "moderate"
+      ],
+      "notes": "This is my demo account for testing scalping strategies with EAs",
+      "status": "connected",
+      "createdAt": "2025-08-06T19:45:12.176Z"
+    },
+    {
+      "id": "2",
+      "userId": "123",
+      "accountName": "Live Swing Trading",
+      "accountType": "mt5",
+      "login": "987654321",
+      "serverName": "Live-Server-01",
+      "brokerName": "FTMO",
+      "accountRegion": "london",
+      "connectionMethod": "manual",
+      "initialBalance": 100000,
+      "currentBalance": 112500,
+      "equity": 115000,
+      "tags": [
+        "live",
+        "swing",
+        "conservative",
+        "prop-firm",
+        "manual"
+      ],
+      "notes": "Conservative swing trading with larger timeframes - FTMO challenge phase",
+      "status": "manual",
+      "createdAt": "2025-08-06T19:45:12.183Z"
+    },
+    {
+      "id": "3",
+      "userId": "123",
+      "accountName": "Copy Trading Portfolio",
+      "accountType": "mt5",
+      "login": "555666777",
+      "serverName": "CopyTrade-Live",
+      "brokerName": "Pepperstone",
+      "accountRegion": "sydney",
+      "connectionMethod": "metaapi",
+      "password": "hidden_password_2",
+      "baseCurrency": "USD",
+      "copyFactoryRoles": "SUBSCRIBER",
+      "tags": [
+        "live",
+        "copy-trading",
+        "signals",
+        "aggressive",
+        "day-trading"
+      ],
+      "notes": "Following top performers with automated copy trading",
+      "status": "connected",
+      "createdAt": "2025-08-06T19:45:12.183Z"
+    },
+    {
+      "id": "1754509908393",
+      "userId": "123",
+      "connectionMethod": "metaapi",
+      "accountName": "MonkeyAttack Gold EA",
+      "accountType": "mt4",
+      "login": "1123261449",
+      "serverName": "Plexytrade-Live",
+      "brokerName": "PlexyTrade",
+      "accountRegion": "",
+      "password": "ETX00kr*WD",
+      "readOnlyPassword": "",
+      "magic": "",
+      "riskManagementApiEnabled": "false",
+      "baseCurrency": "USD",
+      "copyFactoryRoles": "",
+      "initialBalance": "",
+      "currentBalance": "",
+      "equity": "",
+      "categoryTags": "ea",
+      "accountNotes": "",
+      "tags": [
+        "demo",
+        "scalping",
+        "aggressive",
+        "ea",
+        "test",
+        "signalstart"
+      ],
+      "createdAt": "2025-08-06T19:51:48.393Z"
+    }
+  ]
+}
