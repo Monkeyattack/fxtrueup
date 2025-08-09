@@ -116,6 +116,7 @@ class RealDashboard {
         if (userEmailEl) userEmailEl.textContent = this.user.email;
         if (userAvatarEl) {
             userAvatarEl.src = this.user.picture || 
+<<<<<<< Updated upstream
                 'https://ui-avatars.com/api/?name=' + encodeURIComponent(this.user.name || this.user.email) + '&background=1e40af&color=fff';
         }
 
@@ -147,6 +148,9 @@ class RealDashboard {
             
             subscriptionBadgeEl.textContent = badgeText;
             subscriptionBadgeEl.className = 'px-3 py-1 text-sm font-medium rounded-full ' + badgeClass;
+=======
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(this.user.name || this.user.email)}&background=1e40af&color=fff`;
+>>>>>>> Stashed changes
         }
 
         if (this.user.isAdmin) {

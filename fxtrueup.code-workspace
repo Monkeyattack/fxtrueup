@@ -1,0 +1,148 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "git.confirmSync": false,
+        "git.autofetch": true,
+        "git.enableSmartCommit": false,
+        "git.promptToSaveFilesBeforeCommit": "always",
+        "terminal.integrated.cwd": "${workspaceFolder}",
+        "files.watcherExclude": {
+            "**/node_modules/**": true,
+            "**/.git/objects/**": true,
+            "**/.git/subtree-cache/**": true,
+            "**/cache.db": true,
+            "**/*.log": true
+        },
+        "search.exclude": {
+            "**/node_modules": true,
+            "**/cache.db": true,
+            "**/*.log": true,
+            "**/1754686120-trade_history.csv": true
+        },
+        "files.exclude": {
+            "**/cache.db": true,
+            "**/*.log": true,
+            "**/1754686120-trade_history.csv": true
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-vscode.vscode-json",
+            "ms-vscode.vscode-eslint",
+            "ms-vscode.vscode-git-lens",
+            "ms-vscode.remote-ssh",
+            "bradlc.vscode-tailwindcss",
+            "ms-vscode.vscode-typescript-next"
+        ]
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "FX TrueUp: Check Status",
+                "type": "shell",
+                "command": "./dev.sh",
+                "args": ["status"],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                },
+                "problemMatcher": []
+            },
+            {
+                "label": "FX TrueUp: Deploy to VPS",
+                "type": "shell",
+                "command": "./dev.sh",
+                "args": ["deploy"],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                },
+                "problemMatcher": []
+            },
+            {
+                "label": "FX TrueUp: Restart Service",
+                "type": "shell",
+                "command": "./dev.sh",
+                "args": ["restart"],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                },
+                "problemMatcher": []
+            },
+            {
+                "label": "FX TrueUp: View Logs",
+                "type": "shell",
+                "command": "./dev.sh",
+                "args": ["logs"],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                },
+                "problemMatcher": []
+            },
+            {
+                "label": "FX TrueUp: Check Sync",
+                "type": "shell",
+                "command": "./dev.sh",
+                "args": ["check"],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                },
+                "problemMatcher": []
+            },
+            {
+                "label": "Setup VPS Deployment Scripts",
+                "type": "shell",
+                "command": "./deploy-to-vps.sh",
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                },
+                "problemMatcher": []
+            }
+        ]
+    },
+    "launch": {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "Start Local Server",
+                "type": "node",
+                "request": "launch",
+                "program": "${workspaceFolder}/src/index.js",
+                "env": {
+                    "NODE_ENV": "development"
+                },
+                "console": "integratedTerminal",
+                "skipFiles": [
+                    "<node_internals>/**"
+                ]
+            }
+        ]
+    }
+}

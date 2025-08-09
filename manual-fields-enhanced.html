@@ -1,0 +1,152 @@
+                    <div id="manualFields" class="hidden space-y-6">
+                        <div class="border-t pt-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Manual Account Setup</h3>
+                            
+                            <!-- Data Entry Method Selection -->
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-3">How would you like to add trade data?</label>
+                                <div class="space-y-3">
+                                    <div class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary transition duration-150" onclick="selectDataMethod('csv')">
+                                        <div class="flex items-center">
+                                            <input type="radio" name="dataMethod" value="csv" class="h-4 w-4 text-primary focus:ring-primary border-gray-300" checked>
+                                            <div class="ml-3">
+                                                <h4 class="text-md font-medium text-gray-900">Upload CSV File</h4>
+                                                <p class="text-sm text-gray-500">Import your trade history from a CSV file</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary transition duration-150" onclick="selectDataMethod('manual')">
+                                        <div class="flex items-center">
+                                            <input type="radio" name="dataMethod" value="manual" class="h-4 w-4 text-primary focus:ring-primary border-gray-300">
+                                            <div class="ml-3">
+                                                <h4 class="text-md font-medium text-gray-900">Enter Manually</h4>
+                                                <p class="text-sm text-gray-500">Add trades one by one or just track balance</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- CSV Upload Option -->
+                            <div id="csvUploadSection" class="space-y-4">
+                                <div class="p-4 bg-gray-50 rounded-lg">
+                                    <h4 class="text-md font-medium text-gray-900 mb-3">Upload Trade History</h4>
+                                    <div class="space-y-3">
+                                        <input type="file" id="csvFile" name="csvFile" accept=".csv" 
+                                               class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark">
+                                        <div id="csvStatus" class="text-sm text-gray-500"></div>
+                                        <p class="text-xs text-gray-500">CSV format: order, close_time, cmd, symbol, true_volume, open_price, close_price, storage, commission, true_profit</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Manual Entry Option -->
+                            <div id="manualEntrySection" class="hidden space-y-4">
+                                <div class="p-4 bg-blue-50 rounded-lg">
+                                    <h4 class="text-md font-medium text-gray-900 mb-2">Manual Trade Entry</h4>
+                                    <p class="text-sm text-gray-600">After creating the account, you can:</p>
+                                    <ul class="mt-2 space-y-1 text-sm text-gray-600">
+                                        <li>• Add individual trades from the account detail page</li>
+                                        <li>• Import trades later via CSV upload</li>
+                                        <li>• Track balance and equity manually</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <!-- Balance Information -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                                <div>
+                                    <label for="initialBalance" class="block text-sm font-medium text-gray-700">Initial Balance</label>
+                                    <div class="mt-1 relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                        </div>
+                                        <input type="number" id="initialBalance" name="initialBalance" step="0.01"
+                                               class="pl-7 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                               placeholder="10000.00">
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500">Starting balance of the account</p>
+                                </div>
+                                <div>
+                                    <label for="currentBalance" class="block text-sm font-medium text-gray-700">Current Balance</label>
+                                    <div class="mt-1 relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                        </div>
+                                        <input type="number" id="currentBalance" name="currentBalance" step="0.01"
+                                               class="pl-7 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                               placeholder="10000.00">
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500">Current account balance</p>
+                                </div>
+                                <div>
+                                    <label for="equity" class="block text-sm font-medium text-gray-700">Equity</label>
+                                    <div class="mt-1 relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 sm:text-sm">$</span>
+                                        </div>
+                                        <input type="number" id="equity" name="equity" step="0.01"
+                                               class="pl-7 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                                               placeholder="10000.00">
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500">Account equity (balance + open P&L)</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Additional Manual Account Info -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                <div>
+                                    <label for="currency" class="block text-sm font-medium text-gray-700">Account Currency</label>
+                                    <select id="currency" name="currency"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                        <option value="USD" selected>USD - US Dollar</option>
+                                        <option value="EUR">EUR - Euro</option>
+                                        <option value="GBP">GBP - British Pound</option>
+                                        <option value="JPY">JPY - Japanese Yen</option>
+                                        <option value="AUD">AUD - Australian Dollar</option>
+                                        <option value="CAD">CAD - Canadian Dollar</option>
+                                        <option value="CHF">CHF - Swiss Franc</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="leverage" class="block text-sm font-medium text-gray-700">Leverage</label>
+                                    <select id="leverage" name="leverage"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                                        <option value="1:1">1:1</option>
+                                        <option value="1:10">1:10</option>
+                                        <option value="1:30">1:30</option>
+                                        <option value="1:50">1:50</option>
+                                        <option value="1:100" selected>1:100</option>
+                                        <option value="1:200">1:200</option>
+                                        <option value="1:300">1:300</option>
+                                        <option value="1:400">1:400</option>
+                                        <option value="1:500">1:500</option>
+                                        <option value="1:1000">1:1000</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+<script>
+// Add this to the page's JavaScript
+function selectDataMethod(method) {
+    const csvSection = document.getElementById('csvUploadSection');
+    const manualSection = document.getElementById('manualEntrySection');
+    const radios = document.querySelectorAll('input[name="dataMethod"]');
+    
+    radios.forEach(radio => {
+        if (radio.value === method) {
+            radio.checked = true;
+        }
+    });
+    
+    if (method === 'csv') {
+        csvSection.classList.remove('hidden');
+        manualSection.classList.add('hidden');
+    } else {
+        csvSection.classList.add('hidden');
+        manualSection.classList.remove('hidden');
+    }
+}
+</script>

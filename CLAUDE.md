@@ -49,12 +49,44 @@ FX True Up is a SaaS platform for MT4/MT5 portfolio tracking and performance ana
 - 20% annual discount option recommended
 - Free trial critical for conversion
 
-## Development Commands
+## CRITICAL: DEVELOPMENT WORKFLOW
+
+**⚠️ NEVER EDIT FILES DIRECTLY ON VPS VIA SSH! ⚠️**
+
+### The Problem
+Direct SSH editing causes:
+- Formatting corruption when using cat commands
+- Syntax errors from command line text manipulation
+- Lost changes when context resets
+- Out-of-sync repositories
+- Broken deployment state
+
+### Proper Workflow (ALWAYS USE THIS)
+1. **Make changes locally** in this Git repository
+2. **Commit and push** to GitHub: `./dev.sh commit "Your message"`
+3. **Deploy to VPS**: `./dev.sh deploy` 
+4. **Restart service**: `./dev.sh restart`
+
+### Development Commands
+**Local Development:**
 - Setup: `npm install`
-- Run: `npm start` (port 8080)
+- Run locally: `npm start` (port 8080)
 - Test: `npm test`
-- Deploy: `pm2 restart fxtrueup`
-- Logs: `pm2 logs fxtrueup`
+
+**Deployment (USE THESE ONLY):**
+- `./dev.sh status` - Check Git and VPS status
+- `./dev.sh commit "message"` - Commit and push to GitHub
+- `./dev.sh deploy` - Deploy from GitHub to VPS
+- `./dev.sh restart` - Restart VPS PM2 service
+- `./dev.sh logs` - View VPS logs
+- `./dev.sh check` - Check if local/GitHub/VPS are in sync
+- `./dev.sh quick "message"` - Commit, deploy, restart in one command
+
+**NEVER USE THESE COMMANDS:**
+- ❌ `ssh root@172.93.51.42 "cat > file.js"` 
+- ❌ `ssh root@172.93.51.42 "nano file.js"`
+- ❌ `ssh root@172.93.51.42 "vim file.js"`
+- ❌ Any direct file editing via SSH
 
 ## Key Files
 - `src/index.js`: Main Express server
@@ -79,5 +111,34 @@ FX True Up is a SaaS platform for MT4/MT5 portfolio tracking and performance ana
 - You have access to the VPS check the global CLAUDE.md
 - Save VPS info, API keys, url, and file paths on the VPS into local project for easy reference and configuration management
 
+## Development Principles
+- Never Ever ever load fake data if real data is unavailabe.  Ever
+
+## Workflow Enforcement
+
+This project has the following safeguards to prevent SSH editing mistakes:
+
+### Git Hooks
+- **Pre-commit hook**: Checks for SSH editing patterns and warns about recent file modifications
+- **Post-commit hook**: Reminds about deployment workflow
+
+### Automation Scripts
+- **Local Scripts**: `.claude/commands/dev.sh` and `.claude/commands/dev.ps1`
+- **VPS Scripts**: Automatically created deployment, restart, logs, and status scripts
+
+### Context Reset Protection
+When Claude's context resets, these files provide immediate workflow reminders:
+1. This CLAUDE.md file (always read first)
+2. Git hooks that prevent bad practices
+3. Clear command scripts that enforce proper workflow
+
+### Emergency Recovery
+If changes are accidentally made via SSH:
+1. **DO NOT COMMIT** the local changes
+2. Use `./dev.sh check` to see sync status
+3. Reset local changes: `git reset --hard origin/master`
+4. Make changes properly in local repository
+5. Use proper deployment workflow
+
 ---
-Last Updated: 2025-08-03
+Last Updated: 2025-08-09

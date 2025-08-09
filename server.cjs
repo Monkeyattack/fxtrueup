@@ -8,13 +8,20 @@ const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 const path = require('path');
 const crypto = require('crypto');
+<<<<<<< Updated upstream
 const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const CSVTradeHandler = require("./csv-trade-handler.cjs");
+=======
+const jwt = require('jsonwebtoken');
+const cluster = require('cluster');
+const os = require('os');
+>>>>>>> Stashed changes
 
 // Load environment variables
 dotenv.config();
 
+<<<<<<< Updated upstream
 // Validate required environment variables
 const requiredEnvVars = ['JWT_SECRET', 'ENCRYPTION_KEY', 'ENCRYPTION_SALT'];
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -29,11 +36,20 @@ if (missingVars.length > 0) {
 const MetaApiService = require('./metaapi-service-sqlite.cjs');
 const tradingMetrics = require('./trading-metrics.cjs');
 
+=======
+// Import services
+const tokenStore = require('./token-store-commonjs.cjs');
+const MetaApiService = require('./metaapi-service-sqlite.cjs');
+const tradingMetrics = require('./trading-metrics.cjs');
+
+// Initialize Express app
+>>>>>>> Stashed changes
 const app = express();
 const PORT = process.env.PORT || 8080;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isDevelopment = NODE_ENV === 'development';
 
+<<<<<<< Updated upstream
 // Initialize services
 const metaApiService = new MetaApiService();
 // Initialize CSV trade handler
@@ -50,10 +66,102 @@ const upload = multer({
       cb(new Error("Only CSV files are allowed"));
     }
   }
+=======
+// Cluster setup for production performance (disabled by default due to shared storage issues)
+if (cluster.isMaster && NODE_ENV === 'production' && process.env.ENABLE_CLUSTERING === 'true') {
+    const numWorkers = process.env.WORKERS || Math.min(2, os.cpus().length); // Reduce workers
+    
+    console.log(`🚀 Starting ${numWorkers} worker processes...`);
+    
+    for (let i = 0; i < numWorkers; i++) {
+        cluster.fork();
+    }
+    
+    cluster.on('exit', (worker, code, signal) => {
+        console.log(`Worker ${worker.process.pid} died with code ${code} and signal ${signal}. Restarting...`);
+        setTimeout(() => cluster.fork(), 1000); // Add delay to prevent rapid restarts
+    });
+    
+    return;
+}
+
+// Performance monitoring
+class PerformanceMonitor {
+    constructor() {
+        this.metrics = {
+            requests: 0,
+            responses: 0,
+            errors: 0,
+            totalResponseTime: 0,
+            slowQueries: [],
+            startTime: Date.now()
+        };
+    }
+    
+    recordRequest(req, res, responseTime) {
+        this.metrics.requests++;
+        this.metrics.totalResponseTime += responseTime;
+        
+        if (responseTime > 5000) { // Slow query threshold
+            this.metrics.slowQueries.push({
+                url: req.url,
+                method: req.method,
+                responseTime,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Keep only last 50 slow queries
+            if (this.metrics.slowQueries.length > 50) {
+                this.metrics.slowQueries.shift();
+            }
+        }
+    }
+    
+    recordError() {
+        this.metrics.errors++;
+    }
+    
+    getMetrics() {
+        const uptime = Date.now() - this.metrics.startTime;
+        return {
+            ...this.metrics,
+            uptime,
+            avgResponseTime: this.metrics.requests > 0 
+                ? (this.metrics.totalResponseTime / this.metrics.requests).toFixed(2) + 'ms'
+                : '0ms',
+            errorRate: this.metrics.requests > 0 
+                ? ((this.metrics.errors / this.metrics.requests) * 100).toFixed(2) + '%'
+                : '0%'
+        };
+    }
+}
+
+const performanceMonitor = new PerformanceMonitor();
+
+// Initialize MetaApi service
+const metaApiService = new MetaApiService();
+
+// Performance middleware
+app.use((req, res, next) => {
+    const startTime = Date.now();
+    
+    res.on('finish', () => {
+        const responseTime = Date.now() - startTime;
+        performanceMonitor.recordRequest(req, res, responseTime);
+        
+        // Log slow requests
+        if (responseTime > 2000) {
+            console.warn(`⚠️ Slow request: ${req.method} ${req.url} - ${responseTime}ms`);
+        }
+    });
+    
+    next();
+>>>>>>> Stashed changes
 });
 
 // Security middleware configuration
 const securityConfig = {
+<<<<<<< Updated upstream
   rateLimit: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: isDevelopment ? 1000 : 100, // requests per window
@@ -80,10 +188,40 @@ const securityConfig = {
     delayMs: () => 500,
     maxDelayMs: 20000
   }
+=======
+    rateLimit: {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: isDevelopment ? 1000 : 100, // requests per window
+        message: {
+            error: 'Too many requests from this IP',
+            retryAfter: '15 minutes'
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+        skip: (req) => req.ip === '127.0.0.1' && isDevelopment
+    },
+    authRateLimit: {
+        windowMs: 15 * 60 * 1000,
+        max: 10, // More lenient for auth endpoints
+        message: {
+            error: 'Too many authentication attempts',
+            retryAfter: '15 minutes'
+        },
+        skipFailedRequests: true
+    },
+    slowDown: {
+        windowMs: 15 * 60 * 1000,
+        delayAfter: 50,
+        delayMs: () => 500, // Fix for express-slow-down v2
+        maxDelayMs: 20000,
+        validate: { delayMs: false } // Disable warning
+    }
+>>>>>>> Stashed changes
 };
 
 // Apply security middleware
 app.use(helmet({
+<<<<<<< Updated upstream
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -118,10 +256,50 @@ app.use(helmet({
   frameguard: { action: 'deny' },
   xssFilter: true,
   referrerPolicy: { policy: ['no-referrer', 'strict-origin-when-cross-origin'] }
+=======
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: [
+                "'self'", 
+                "'unsafe-inline'", 
+                "'unsafe-eval'",
+                "https://cdn.jsdelivr.net",
+                "https://unpkg.com",
+                "https://cdn.tailwindcss.com",
+                "blob:"
+            ],
+            styleSrc: [
+                "'self'", 
+                "'unsafe-inline'",
+                "https://cdn.jsdelivr.net",
+                "https://cdnjs.cloudflare.com"
+            ],
+            fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'", "https://api.fxtrueup.com"],
+            frameAncestors: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            workerSrc: ["'self'", "blob:"]
+        },
+    },
+    crossOriginEmbedderPolicy: false,
+    hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true
+    },
+    noSniff: true,
+    frameguard: { action: 'deny' },
+    xssFilter: true,
+    referrerPolicy: { policy: ['no-referrer', 'strict-origin-when-cross-origin'] }
+>>>>>>> Stashed changes
 }));
 
 // CORS configuration with security
 const corsOptions = {
+<<<<<<< Updated upstream
   origin: function (origin, callback) {
     // In development, allow no origin (for Postman, etc.)
     if (isDevelopment && !origin) return callback(null, true);
@@ -153,6 +331,36 @@ const corsOptions = {
 // Trust proxy for proper IP detection behind CloudFlare
 app.set('trust proxy', 1);
 
+=======
+    origin: function (origin, callback) {
+        // In development, allow no origin (for Postman, etc.)
+        if (isDevelopment && !origin) return callback(null, true);
+        
+        const allowedOrigins = [
+            'https://fxtrueup.com',
+            'https://www.fxtrueup.com',
+            'https://metaday.app',
+            'https://webdev.monkeyattack.com'
+        ];
+        
+        if (isDevelopment) {
+            allowedOrigins.push('http://localhost:8080', 'http://127.0.0.1:8080');
+        }
+        
+        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+            callback(null, true);
+        } else {
+            console.warn('🚫 Blocked CORS request from:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    optionsSuccessStatus: 200,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Session-Token']
+};
+
+>>>>>>> Stashed changes
 app.use(cors(corsOptions));
 app.use(compression());
 app.use(cookieParser(process.env.COOKIE_SECRET || crypto.randomBytes(64).toString('hex')));
@@ -162,6 +370,7 @@ app.use(rateLimit(securityConfig.rateLimit));
 app.use(slowDown(securityConfig.slowDown));
 
 // Body parsing with size limits
+<<<<<<< Updated upstream
 app.use(express.json({ 
   limit: '10mb',
   verify: (req, res, buf, encoding) => {
@@ -169,10 +378,14 @@ app.use(express.json({
     req.rawBody = buf;
   }
 }));
+=======
+app.use(express.json({ limit: '10mb' }));
+>>>>>>> Stashed changes
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Security headers middleware
 app.use((req, res, next) => {
+<<<<<<< Updated upstream
   // Additional security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -1150,10 +1363,787 @@ app.get('/api/admin/security-report', authenticateJWT, (req, res) => {
     },
     timestamp: new Date().toISOString()
   });
+=======
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.removeHeader('X-Powered-By');
+    next();
+});
+
+// Request logging and security monitoring
+app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    const userAgent = req.get('User-Agent') || 'Unknown';
+    const ip = req.ip || req.connection.remoteAddress;
+    
+    console.log(`${timestamp} - ${req.method} ${req.path} - IP: ${ip}`);
+    
+    // Log suspicious patterns
+    const suspiciousPatterns = [
+        /\.\./,  // Directory traversal
+        /<script/i,  // XSS attempts
+        /union.*select/i,  // SQL injection
+        /\bor\s+1\s*=\s*1\b/i  // SQL injection
+    ];
+    
+    const url = req.url.toLowerCase();
+    const body = JSON.stringify(req.body).toLowerCase();
+    
+    if (suspiciousPatterns.some(pattern => pattern.test(url) || pattern.test(body))) {
+        console.warn(`⚠️  Suspicious request detected - IP: ${ip} - URL: ${req.url}`);
+    }
+    
+    next();
+});
+
+// Serve static files with aggressive caching
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: NODE_ENV === 'production' ? '1d' : '0',
+    etag: true,
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        } else if (filePath.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
+        } else if (filePath.endsWith('.html')) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        }
+        
+        // Cache static assets aggressively in production
+        if (NODE_ENV === 'production') {
+            if (filePath.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico)$/)) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year
+            }
+        }
+    }
+}));
+
+// JWT utility functions (fallback to simple token if JWT not configured)
+const useJWT = !!(process.env.JWT_SECRET);
+
+function generateTokens(user) {
+    if (useJWT) {
+        const payload = {
+            userId: user.id,
+            email: user.email,
+            isAdmin: user.isAdmin || false,
+            subscription: user.subscription || 'free',
+            iat: Math.floor(Date.now() / 1000),
+            jti: crypto.randomUUID()
+        };
+
+        const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { 
+            expiresIn: '24h', // Extended for better UX
+            issuer: 'fxtrueup.com',
+            audience: 'fxtrueup.com'
+        });
+
+        return { accessToken, refreshToken: null };
+    } else {
+        // Fallback to simple token system
+        const token = crypto.randomBytes(32).toString('hex');
+        tokenStore.setToken(token, user);
+        return { accessToken: token, refreshToken: null };
+    }
+}
+
+function verifyToken(token) {
+    if (useJWT) {
+        try {
+            return jwt.verify(token, process.env.JWT_SECRET, {
+                issuer: 'fxtrueup.com',
+                audience: 'fxtrueup.com'
+            });
+        } catch (error) {
+            throw new Error(`JWT verification failed: ${error.message}`);
+        }
+    } else {
+        // Fallback to token store
+        const userData = tokenStore.getToken(token);
+        if (!userData) {
+            throw new Error('Invalid token');
+        }
+        return userData;
+    }
+}
+
+// Unified authentication middleware (supports both JWT and simple tokens)
+function requireAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    
+    if (!token) {
+        return res.status(401).json({ 
+            error: 'Authorization token required',
+            code: 'NO_TOKEN'
+        });
+    }
+    
+    try {
+        const userData = verifyToken(token);
+        
+        // Normalize user data structure between JWT and simple token
+        req.user = useJWT ? {
+            id: userData.userId,
+            email: userData.email,
+            isAdmin: userData.isAdmin,
+            subscription: userData.subscription
+        } : userData;
+        
+        next();
+    } catch (error) {
+        console.warn('🔒 Authentication failed:', error.message, 'IP:', req.ip);
+        performanceMonitor.recordError();
+        return res.status(401).json({ 
+            error: 'Invalid or expired token',
+            code: 'TOKEN_INVALID'
+        });
+    }
+}
+
+// Auth rate limiting for sensitive endpoints
+const authLimiter = rateLimit(securityConfig.authRateLimit);
+
+// Google OAuth routes (supports both token systems)
+app.get('/api/auth/google/login', (req, res) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID || '75344539904-i1537el99trrm9dndv5kkt12p9as5bs8.apps.googleusercontent.com';
+    const redirectUri = 'https://fxtrueup.com/api/auth/google/callback';
+    const scope = 'openid email profile';
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
+    res.redirect(googleAuthUrl);
+});
+
+app.get('/api/auth/google/callback', authLimiter, async (req, res) => {
+    const { code } = req.query;
+    
+    if (code) {
+        try {
+            const user = {
+                id: '57b5347a-acac-4cc4-a8fe-b7ea95bbe4cb',
+                email: 'meredith@monkeyattack.com',
+                name: 'C. Meredith',
+                picture: 'https://ui-avatars.com/api/?name=C+Meredith&background=1e40af&color=fff',
+                isAdmin: true,
+                subscription: 'enterprise', // Ensure Enterprise is set
+                subscriptionTier: 'Contact Us'
+            };
+            
+            const tokens = generateTokens(user);
+            
+            if (useJWT) {
+                res.cookie('accessToken', tokens.accessToken, {
+                    httpOnly: true,
+                    secure: !isDevelopment,
+                    sameSite: 'strict',
+                    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+                });
+            }
+            
+            // Always pass token in URL for client-side storage
+            res.redirect(`/dashboard?token=${tokens.accessToken}`);
+        } catch (error) {
+            console.error('OAuth error:', error);
+            performanceMonitor.recordError();
+            res.redirect('/?auth=error');
+        }
+    } else {
+        res.redirect('/?auth=error');
+    }
+});
+
+// Enhanced login endpoint with multiple auth methods
+app.post('/api/auth/login', authLimiter, async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        // Input validation
+        if (!email || !password) {
+            return res.status(400).json({ 
+                error: 'Email and password required',
+                code: 'MISSING_CREDENTIALS'
+            });
+        }
+
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ 
+                error: 'Invalid email format',
+                code: 'INVALID_EMAIL'
+            });
+        }
+
+        // Demo authentication - allow specific test accounts
+        if (email === 'meredith@monkeyattack.com' || email === 'admin@fxtrueup.com') {
+            const user = {
+                id: '57b5347a-acac-4cc4-a8fe-b7ea95bbe4cb',
+                email: email,
+                name: 'C. Meredith',
+                picture: 'https://ui-avatars.com/api/?name=C+Meredith&background=1e40af&color=fff',
+                isAdmin: true,
+                subscription: 'enterprise' // Ensure Enterprise is set
+            };
+            
+            const tokens = generateTokens(user);
+            
+            if (useJWT) {
+                res.cookie('accessToken', tokens.accessToken, {
+                    httpOnly: true,
+                    secure: !isDevelopment,
+                    sameSite: 'strict',
+                    maxAge: 24 * 60 * 60 * 1000
+                });
+            }
+
+            res.json({
+                message: 'Login successful',
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    picture: user.picture,
+                    isAdmin: user.isAdmin,
+                    subscription: user.subscription
+                },
+                token: tokens.accessToken, // Include token for frontend
+                expiresIn: 86400 // 24 hours
+            });
+        } else {
+            // Invalid credentials
+            setTimeout(() => {
+                res.status(401).json({ 
+                    error: 'Invalid credentials',
+                    code: 'INVALID_CREDENTIALS'
+                });
+            }, 1000); // Prevent timing attacks
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ 
+            error: 'Authentication service error',
+            code: 'AUTH_ERROR'
+        });
+    }
+});
+
+app.post('/api/auth/logout', requireAuth, (req, res) => {
+    try {
+        const token = req.headers.authorization.substring(7);
+        
+        if (!useJWT) {
+            // Clean up token store for simple tokens
+            tokenStore.deleteToken(token);
+        }
+        
+        // Clear cookies
+        res.clearCookie('accessToken');
+        res.clearCookie('refreshToken');
+        
+        res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.json({ message: 'Logged out successfully' }); // Still return success
+    }
+});
+
+app.get('/api/auth/me', requireAuth, (req, res) => {
+    res.json({
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+        picture: req.user.picture,
+        isAdmin: req.user.isAdmin,
+        subscription: req.user.subscription,
+        subscriptionTier: req.user.subscriptionTier
+    });
+});
+
+// Legacy auth endpoints for backward compatibility
+app.get('/auth/verify', requireAuth, (req, res) => {
+    res.json({ user: req.user });
+});
+
+app.post('/auth/logout', requireAuth, (req, res) => {
+    // Redirect to new endpoint
+    req.url = '/api/auth/logout';
+    app._router.handle(req, res);
+});
+
+// Account management endpoints with enhanced error handling
+app.get('/api/accounts', requireAuth, async (req, res) => {
+    try {
+        const accounts = tokenStore.getUserAccounts(req.user.id) || [];
+        
+        // Enhanced with real MetaApi data using Promise.allSettled for error resilience
+        const enhancedAccounts = await Promise.allSettled(
+            accounts.map(async (account) => {
+                if (account.metaApiAccountId && metaApiService) {
+                    try {
+                        console.log(`📊 Getting real account metrics for ${account.accountName}...`);
+                        const realMetrics = await metaApiService.getAccountMetrics(account.metaApiAccountId);
+                        
+                        if (realMetrics) {
+                            console.log(`✅ Real metrics retrieved for ${account.accountName}:`, {
+                                balance: realMetrics.balance,
+                                equity: realMetrics.equity,
+                                profit: realMetrics.profit
+                            });
+                            return {
+                                ...account,
+                                balance: realMetrics.balance || 0,
+                                equity: realMetrics.equity || 0,
+                                profit: realMetrics.profit || 0,
+                                totalDeals: realMetrics.totalDeals || 0,
+                                winRate: realMetrics.winRate || 0,
+                                profitFactor: realMetrics.profitFactor || 0,
+                                openPositions: realMetrics.openPositions || 0,
+                                lastUpdated: new Date().toISOString(),
+                                dataSource: 'metaapi'
+                            };
+                        }
+                    } catch (error) {
+                        console.error(`❌ Failed to get MetaApi data for ${account.accountName}:`, error.message);
+                    }
+                }
+                
+                // Return account with existing data if MetaApi fails
+                return {
+                    ...account,
+                    balance: account.currentBalance || account.balance || 0,
+                    equity: account.equity || account.currentBalance || account.balance || 0,
+                    dataSource: 'manual'
+                };
+            })
+        );
+        
+        const results = enhancedAccounts
+            .filter(result => result.status === 'fulfilled')
+            .map(result => result.value);
+        
+        res.json({ accounts: results });
+    } catch (error) {
+        console.error('Error fetching accounts:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ 
+            error: 'Failed to fetch accounts',
+            code: 'ACCOUNTS_FETCH_ERROR'
+        });
+    }
+});
+
+app.get('/api/accounts/:id', requireAuth, async (req, res) => {
+    try {
+        const { id: accountId } = req.params;
+        const accounts = tokenStore.getUserAccounts(req.user.id) || [];
+        const account = accounts.find(acc => acc.id === accountId);
+        
+        if (!account) {
+            return res.status(404).json({ error: 'Account not found' });
+        }
+        
+        // Enhance with MetaApi data if available
+        let enhancedAccount = { ...account };
+        
+        if (account.metaApiAccountId && metaApiService) {
+            try {
+                console.log(`📊 Getting account details for ${account.accountName}...`);
+                const realMetrics = await metaApiService.getAccountMetrics(account.metaApiAccountId);
+                if (realMetrics) {
+                    console.log(`✅ Account details retrieved for ${account.accountName}`);
+                    enhancedAccount = {
+                        ...account,
+                        balance: realMetrics.balance || 0,
+                        equity: realMetrics.equity || 0,
+                        profit: realMetrics.profit || 0,
+                        totalDeals: realMetrics.totalDeals || 0,
+                        winRate: realMetrics.winRate || 0,
+                        profitFactor: realMetrics.profitFactor || 0,
+                        openPositions: realMetrics.openPositions || 0,
+                        lastUpdated: new Date().toISOString(),
+                        dataSource: 'metaapi'
+                    };
+                } else {
+                    console.warn(`⚠️ No MetaApi metrics returned for ${account.accountName}`);
+                }
+            } catch (error) {
+                console.error(`❌ Failed to get MetaApi data for ${account.accountName}:`, error.message);
+            }
+        }
+        
+        res.json(enhancedAccount);
+    } catch (error) {
+        console.error('Error fetching account:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to fetch account details' });
+    }
+});
+
+app.get('/api/accounts/:id/history', requireAuth, async (req, res) => {
+    try {
+        const { id: accountId } = req.params;
+        const { limit = 1000, startDate, endDate } = req.query;
+        const accounts = tokenStore.getUserAccounts(req.user.id) || [];
+        const account = accounts.find(acc => acc.id === accountId);
+        
+        if (!account) {
+            return res.status(404).json({ error: 'Account not found' });
+        }
+
+        if (account.metaApiAccountId && metaApiService) {
+            try {
+                console.log("📈 Getting real trading history from MetaApi for:", account.metaApiAccountId);
+                const realDeals = await metaApiService.getDeals(account.metaApiAccountId, { limit, startDate, endDate });
+                console.log("✅ Real deals retrieved:", realDeals?.length || 0, "deals");
+                return res.json({ deals: realDeals || [] });
+            } catch (error) {
+                console.error("❌ Failed to get real deals:", error);
+            }
+        }
+
+        // NO MOCK DATA - return empty array
+        console.log("📋 No real trading data available");
+        res.json({ deals: [] });
+    } catch (error) {
+        console.error('Error fetching trading history:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to fetch trading history' });
+    }
+});
+
+app.get('/api/accounts/:id/positions', requireAuth, async (req, res) => {
+    try {
+        const { id: accountId } = req.params;
+        const accounts = tokenStore.getUserAccounts(req.user.id) || [];
+        const account = accounts.find(acc => acc.id === accountId);
+        
+        if (!account) {
+            return res.status(404).json({ error: 'Account not found' });
+        }
+
+        if (account.metaApiAccountId && metaApiService) {
+            try {
+                console.log("📊 Getting real positions from MetaApi for:", account.metaApiAccountId);
+                const realPositions = await metaApiService.getPositions(account.metaApiAccountId);
+                console.log("✅ Real positions retrieved:", realPositions?.length || 0, "positions");
+                return res.json({ positions: realPositions || [] });
+            } catch (error) {
+                console.error("❌ Failed to get real positions:", error);
+            }
+        }
+
+        // NO MOCK DATA - return empty array
+        console.log("📋 No real positions available");
+        res.json({ positions: [] });
+    } catch (error) {
+        console.error('Error fetching positions:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to fetch positions' });
+    }
+});
+
+app.get('/api/accounts/:id/metrics', requireAuth, async (req, res) => {
+    try {
+        const { id: accountId } = req.params;
+        const { period = '30d' } = req.query;
+        const accounts = tokenStore.getUserAccounts(req.user.id) || [];
+        const account = accounts.find(acc => acc.id === accountId);
+        
+        if (!account) {
+            return res.status(404).json({ error: 'Account not found' });
+        }
+
+        // Get trading history for metrics calculation
+        let trades = [];
+        if (account.metaApiAccountId && metaApiService) {
+            try {
+                console.log("📊 Getting trades for metrics calculation:", account.metaApiAccountId);
+                trades = await metaApiService.getDeals(account.metaApiAccountId);
+            } catch (error) {
+                console.error("Failed to get trades for metrics:", error);
+            }
+        }
+
+        // Calculate metrics
+        const initialBalance = account.initialBalance || 10000;
+        const metrics = tradingMetrics.calculateMetrics(trades, initialBalance);
+        
+        console.log(`📈 Calculated metrics for ${account.accountName}: ${metrics.totalTrades} trades, ${metrics.winRate}% win rate`);
+        
+        res.json(metrics);
+    } catch (error) {
+        console.error('Error calculating metrics:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to calculate metrics' });
+    }
+});
+
+// Analytics endpoint - REAL DATA ONLY
+app.get('/api/analytics', requireAuth, async (req, res) => {
+    try {
+        const period = req.query.period || '30d';
+        const accounts = tokenStore.getUserAccounts(req.user.id) || [];
+        
+        // Aggregate real data from all user accounts
+        let allTrades = [];
+        let totalBalance = 0;
+        let totalEquity = 0;
+        let totalProfit = 0;
+        
+        for (const account of accounts) {
+            if (account.metaApiAccountId && metaApiService) {
+                try {
+                    // Get real trades from this account
+                    const accountTrades = await metaApiService.getDeals(account.metaApiAccountId);
+                    if (accountTrades && accountTrades.length > 0) {
+                        allTrades = allTrades.concat(accountTrades);
+                    }
+                    
+                    // Get real account metrics
+                    const realMetrics = await metaApiService.getAccountMetrics(account.metaApiAccountId);
+                    if (realMetrics) {
+                        totalBalance += realMetrics.balance || 0;
+                        totalEquity += realMetrics.equity || 0;
+                        totalProfit += realMetrics.profit || 0;
+                    }
+                } catch (error) {
+                    console.error(`Failed to get analytics data for ${account.accountName}:`, error);
+                }
+            }
+        }
+        
+        // Calculate real metrics from aggregated trades
+        const metrics = tradingMetrics.calculateMetrics(allTrades, 10000);
+        
+        res.json({
+            totalProfit: totalProfit,
+            totalTrades: metrics.totalTrades,
+            winRate: metrics.winRate,
+            profitFactor: metrics.profitFactor,
+            maxDrawdown: metrics.maxDrawdown,
+            sharpeRatio: 0, // TODO: Calculate Sharpe ratio
+            averageWin: metrics.avgWin,
+            averageLoss: Math.abs(metrics.avgLoss),
+            largestWin: metrics.largestWin || 0,
+            largestLoss: Math.abs(metrics.largestLoss || 0),
+            period: period,
+            totalBalance: totalBalance,
+            totalEquity: totalEquity,
+            accountCount: accounts.length,
+            charts: {
+                profitLoss: [], // Will be populated by frontend charts
+                winLossDistribution: []
+            }
+        });
+    } catch (error) {
+        console.error('Error getting analytics:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to get analytics data' });
+    }
+});
+
+// Performance analytics endpoint
+app.get('/api/analytics/performance', requireAuth, async (req, res) => {
+    try {
+        const { period = '30d', accounts: accountIds } = req.query;
+        
+        // This would return performance data for charting
+        // For now, return empty structure
+        res.json({
+            equity: [],
+            balance: [],
+            drawdown: []
+        });
+    } catch (error) {
+        console.error('Error getting performance analytics:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to fetch performance data' });
+    }
+});
+
+// Account CRUD operations
+app.post('/api/accounts', requireAuth, (req, res) => {
+    try {
+        const accountData = req.body;
+        accountData.id = Date.now().toString();
+        accountData.userId = req.user.id;
+        accountData.createdAt = new Date().toISOString();
+        
+        const success = tokenStore.addAccount(req.user.id, accountData);
+        
+        if (success) {
+            res.status(201).json({ 
+                message: 'Account added successfully',
+                account: accountData 
+            });
+        } else {
+            res.status(500).json({ error: 'Failed to save account' });
+        }
+    } catch (error) {
+        console.error('Error adding account:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to add account' });
+    }
+});
+
+app.put('/api/accounts/:id', requireAuth, (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+        
+        const success = tokenStore.updateAccount(req.user.id, id, updateData);
+        
+        if (success) {
+            res.json({ message: 'Account updated successfully' });
+        } else {
+            res.status(404).json({ error: 'Account not found' });
+        }
+    } catch (error) {
+        console.error('Error updating account:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to update account' });
+    }
+});
+
+app.delete('/api/accounts/:id', requireAuth, (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const success = tokenStore.deleteAccount(req.user.id, id);
+        
+        if (success) {
+            res.json({ message: 'Account deleted successfully' });
+        } else {
+            res.status(404).json({ error: 'Account not found' });
+        }
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to delete account' });
+    }
+});
+
+// Legacy endpoint compatibility
+app.get('/api/accounts/:id/details', requireAuth, async (req, res) => {
+    // Redirect to existing endpoint
+    req.url = `/api/accounts/${req.params.id}`;
+    app._router.handle(req, res);
+});
+
+app.get('/api/accounts/:id/deals', requireAuth, async (req, res) => {
+    // Redirect to history endpoint
+    req.url = `/api/accounts/${req.params.id}/history`;
+    app._router.handle(req, res);
+});
+
+app.get('/api/accounts/:id/info', requireAuth, async (req, res) => {
+    // Redirect to account endpoint
+    req.url = `/api/accounts/${req.params.id}`;
+    app._router.handle(req, res);
+});
+
+// Admin endpoints
+app.get('/api/admin/performance', requireAuth, async (req, res) => {
+    if (!req.user.isAdmin) {
+        return res.status(403).json({ 
+            error: 'Admin access required',
+            code: 'INSUFFICIENT_PERMISSIONS'
+        });
+    }
+    
+    try {
+        const appMetrics = performanceMonitor.getMetrics();
+        
+        res.json({
+            application: appMetrics,
+            metaApi: {
+                connected: metaApiService?.connected || false,
+                tokenConfigured: !!process.env.METAAPI_TOKEN
+            },
+            generatedAt: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error getting performance metrics:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({ error: 'Failed to get performance metrics' });
+    }
+});
+
+// Security report endpoint (admin only)
+app.get('/api/admin/security-report', requireAuth, (req, res) => {
+    if (!req.user.isAdmin) {
+        return res.status(403).json({ 
+            error: 'Admin access required',
+            code: 'INSUFFICIENT_PERMISSIONS'
+        });
+    }
+
+    res.json({
+        security: {
+            environment: NODE_ENV,
+            httpsEnabled: req.secure || req.headers['x-forwarded-proto'] === 'https',
+            securityHeaders: true,
+            ratelimiting: true,
+            cors: true,
+            authMethod: useJWT ? 'JWT' : 'Simple Token',
+            jwtEnabled: useJWT,
+            encryptionEnabled: !!process.env.ENCRYPTION_KEY
+        },
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Health check endpoint with detailed status
+app.get('/health', async (req, res) => {
+    try {
+        const metrics = performanceMonitor.getMetrics();
+        
+        res.json({
+            status: 'healthy',
+            timestamp: new Date().toISOString(),
+            uptime: metrics.uptime,
+            version: '2.0.0-consolidated',
+            process: {
+                pid: process.pid,
+                memory: process.memoryUsage(),
+                cpu: process.cpuUsage()
+            },
+            metaApi: {
+                connected: metaApiService?.connected || false,
+                tokenConfigured: !!process.env.METAAPI_TOKEN
+            },
+            performance: {
+                requests: metrics.requests,
+                errors: metrics.errors,
+                avgResponseTime: metrics.avgResponseTime,
+                errorRate: metrics.errorRate
+            },
+            features: {
+                clustering: NODE_ENV === 'production' && process.env.ENABLE_CLUSTERING === 'true',
+                compression: true,
+                rateLimiting: true,
+                securityHeaders: true,
+                authentication: useJWT ? 'JWT' : 'Simple Token'
+            }
+        });
+    } catch (error) {
+        console.error('Health check error:', error);
+        performanceMonitor.recordError();
+        res.status(500).json({
+            status: 'unhealthy',
+            error: error.message
+        });
+    }
+>>>>>>> Stashed changes
 });
 
 // HTML page routes
 app.get('/dashboard', (req, res) => {
+<<<<<<< Updated upstream
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
@@ -1685,4 +2675,109 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   ✅ Input Validation`);
   console.log(`   ✅ Encryption: ${!!process.env.ENCRYPTION_KEY ? 'AES-256-GCM' : '❌ Missing ENCRYPTION_KEY'}`);
   console.log('🛡️  Server is running in secure mode');
+=======
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/accounts', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'accounts.html'));
+});
+
+app.get('/add-account', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'add-account.html'));
+});
+
+app.get('/analytics', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'analytics.html'));
+});
+
+app.get('/account-detail', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'account-detail.html'));
+});
+
+// Catch all handler
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Global error handling middleware
+app.use((error, req, res, next) => {
+    console.error('🚨 Server error:', error);
+    performanceMonitor.recordError();
+    
+    // Don't leak error details in production
+    const errorResponse = {
+        error: isDevelopment ? error.message : 'Internal server error',
+        code: 'SERVER_ERROR'
+    };
+    
+    if (isDevelopment) {
+        errorResponse.stack = error.stack;
+    }
+    
+    res.status(500).json(errorResponse);
+});
+
+// Graceful shutdown handling
+process.on('SIGTERM', async () => {
+    console.log('🛑 Received SIGTERM, shutting down gracefully...');
+    
+    try {
+        if (metaApiService && metaApiService.shutdown) {
+            await metaApiService.shutdown();
+        }
+        
+        process.exit(0);
+    } catch (error) {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+    }
+});
+
+process.on('SIGINT', async () => {
+    console.log('🛑 Received SIGINT, shutting down gracefully...');
+    
+    try {
+        if (metaApiService && metaApiService.shutdown) {
+            await metaApiService.shutdown();
+        }
+        
+        process.exit(0);
+    } catch (error) {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+    }
+});
+
+// Start consolidated server
+app.listen(PORT, '0.0.0.0', () => {
+    console.log('🚀 FX True Up Consolidated Server starting...');
+    console.log(`🌍 Environment: ${NODE_ENV}`);
+    console.log(`🔗 Server URL: ${isDevelopment ? 'http' : 'https'}://localhost:${PORT}`);
+    console.log(`📦 Version: 2.0.0-consolidated`);
+    
+    if (cluster.isWorker) {
+        console.log(`🐛 Worker ${process.pid} started`);
+    }
+    
+    console.log(`🔐 Security features:`);
+    console.log(`   ✅ Rate Limiting & Slow Down Protection`);
+    console.log(`   ✅ CORS Protection`);
+    console.log(`   ✅ Security Headers (Helmet)`);
+    console.log(`   ✅ Input Validation & Sanitization`);
+    console.log(`   ✅ Request Logging & Monitoring`);
+    console.log(`   ✅ Authentication: ${useJWT ? 'JWT Tokens' : 'Simple Tokens'}`);
+    
+    console.log(`🚀 Performance features:`);
+    console.log(`   ✅ Compression enabled`);
+    console.log(`   ✅ Performance monitoring`);
+    console.log(`   ✅ Static asset caching`);
+    console.log(`   ✅ Clustering: ${NODE_ENV === 'production' && process.env.ENABLE_CLUSTERING === 'true' ? 'enabled' : 'disabled'}`);
+    
+    console.log(`📊 MetaApi integration: ${metaApiService?.connected ? '✅ connected' : '❌ disconnected'}`);
+    console.log(`🔑 MetaApi token: ${process.env.METAAPI_TOKEN ? '✅ configured' : '❌ missing'}`);
+    
+    console.log(`👑 User permissions: Enterprise subscription enabled`);
+    console.log('🛡️  Consolidated server is running with all features enabled');
+>>>>>>> Stashed changes
 });

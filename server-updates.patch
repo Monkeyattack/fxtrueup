@@ -1,0 +1,46 @@
+# History endpoint update
+s/\/\/ For now, return mock transaction data/\/\/ Get real trading history if account has metaApiAccountId/
+
+# Replace the entire history mock section
+/For now, return mock transaction data/,/deals: mockDeals.sort/c\
+  // Get real trading history if account has metaApiAccountId\
+  if (account.metaApiAccountId) {\
+    try {\
+      console.log("📈 Getting real trading history from MetaApi for:", account.metaApiAccountId);\
+      const realDeals = await metaApiService.getDeals(account.metaApiAccountId);\
+      if (realDeals && realDeals.length > 0) {\
+        console.log("✅ Real deals retrieved:", realDeals.length, "deals");\
+        return res.json({ deals: realDeals });\
+      }\
+    } catch (error) {\
+      console.error("❌ Failed to get real deals:", error);\
+    }\
+  }\
+\
+  // Fallback to mock data\
+  console.log("📋 Using mock trading data for account:", accountId);\
+  const mockDeals = [];\
+  const symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"];\
+  const now = new Date();\
+  \
+  for (let i = 0; i < 50; i++) {\
+    const daysAgo = Math.floor(Math.random() * 30);\
+    const date = new Date(now);\
+    date.setDate(date.getDate() - daysAgo);\
+    \
+    const profit = -100 + Math.random() * 300;\
+    mockDeals.push({\
+      id: \`deal_\${i}\`,\
+      time: date.toISOString(),\
+      symbol: symbols[Math.floor(Math.random() * symbols.length)],\
+      type: Math.random() > 0.5 ? "DEAL_TYPE_BUY" : "DEAL_TYPE_SELL",\
+      volume: 0.01 + Math.random() * 0.5,\
+      price: 1.0 + Math.random() * 0.5,\
+      commission: -1 - Math.random() * 5,\
+      swap: -0.5 + Math.random() * 1,\
+      profit: profit\
+    });\
+  }\
+\
+  res.json({\
+    deals: mockDeals.sort((a, b) => new Date(b.time) - new Date(a.time))

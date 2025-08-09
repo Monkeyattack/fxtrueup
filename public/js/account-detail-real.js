@@ -14,11 +14,16 @@ class RealAccountDetail {
 
     async init() {
         // Get account ID from URL
+<<<<<<< Updated upstream
         console.log("[DEBUG] Init started with accountId:", this.accountId);
         const urlParams = new URLSearchParams(window.location.search);
         this.accountId = urlParams.get('id');
         console.log("[DEBUG] URL params:", window.location.search);
         console.log("[DEBUG] Account ID from URL:", this.accountId);
+=======
+        const urlParams = new URLSearchParams(window.location.search);
+        this.accountId = urlParams.get('id');
+>>>>>>> Stashed changes
         
         if (!this.accountId) {
             window.location.href = '/accounts';
@@ -37,7 +42,10 @@ class RealAccountDetail {
         }
 
         this.initializeEventListeners();
+<<<<<<< Updated upstream
         console.log("[DEBUG] About to call loadAccountData");
+=======
+>>>>>>> Stashed changes
         await this.loadUserData();
         await this.loadAccountData();
         this.setupRealTimeUpdates();
@@ -55,11 +63,14 @@ class RealAccountDetail {
     }
 
     initializeEventListeners() {
+<<<<<<< Updated upstream
         const reloadBtn = document.getElementById("reloadBtn");
         if (reloadBtn) {
             reloadBtn.addEventListener("click", () => location.reload());
         }
 // Tab switching        this.initializeTabSwitching();                // Export buttons        const exportTransBtn = document.querySelector("#exportTransactionsBtn");        if (exportTransBtn) {            exportTransBtn.addEventListener("click", () => this.exportTransactions());        }                const exportPnLBtn = document.querySelector("#exportPnLBtn");        if (exportPnLBtn) {            exportPnLBtn.addEventListener("click", () => this.exportPnL());        }
+=======
+>>>>>>> Stashed changes
         // User menu
         const userMenuBtn = document.getElementById('userMenuBtn');
         const userDropdown = document.getElementById('userDropdown');
@@ -137,7 +148,10 @@ class RealAccountDetail {
 
     async loadAccountData(period = '30d') {
         try {
+<<<<<<< Updated upstream
             console.log("[DEBUG] Starting loadAccountData for account:", this.accountId);
+=======
+>>>>>>> Stashed changes
             this.showLoading('account');
 
             // Load account details, deals, positions, and metrics in parallel
@@ -148,11 +162,20 @@ class RealAccountDetail {
                 this.loadAccountMetrics(period)
             ]);
 
+<<<<<<< Updated upstream
             console.log("[DEBUG] API responses:", { accountData, dealsData, positionsData, metricsData });
             this.account = accountData.account || accountData;
             this.deals = accountData.deals || dealsData.deals || [];
             this.positions = accountData.positions || positionsData.positions || [];
             this.metrics = accountData.metrics || metricsData;
+=======
+            this.account = accountData.account || accountData;
+            this.deals = dealsData.deals || [];
+            this.positions = positionsData.positions || [];
+            this.metrics = metricsData;
+
+            // Update UI
+>>>>>>> Stashed changes
             await this.updateAccountInfo();
             await this.updateMetrics();
             await this.updateDealsTable();
@@ -160,11 +183,16 @@ class RealAccountDetail {
             await this.updateCharts();
 
         } catch (error) {
+<<<<<<< Updated upstream
             console.error("[DEBUG] Error in loadAccountData:", error);
             console.error("[DEBUG] Error stack:", error.stack);
             console.error('Error loading account data:', error);
             this.showError('Failed to load account data. Please refresh the page.');
             console.log("[DEBUG] Finally block - hiding loading for account");
+=======
+            console.error('Error loading account data:', error);
+            this.showError('Failed to load account data. Please refresh the page.');
+>>>>>>> Stashed changes
         } finally {
             this.hideLoading('account');
         }
@@ -351,7 +379,11 @@ class RealAccountDetail {
 
     async updateDealsTable() {
         try {
+<<<<<<< Updated upstream
             const tbody = document.getElementById('transactionsTabBtnleBody');
+=======
+            const tbody = document.getElementById('transactionsTableBody');
+>>>>>>> Stashed changes
             if (!tbody) return;
 
             if (this.deals.length === 0) {
@@ -409,7 +441,11 @@ class RealAccountDetail {
 
     async updatePositionsTable() {
         try {
+<<<<<<< Updated upstream
             const tbody = document.getElementById('positionsTabBtnleBody');
+=======
+            const tbody = document.getElementById('positionsTableBody');
+>>>>>>> Stashed changes
             if (!tbody) return;
 
             if (this.positions.length === 0) {
@@ -581,17 +617,26 @@ class RealAccountDetail {
     // UI Helper Methods
     showLoading(context) {
         this.loadingStates.add(context);
+<<<<<<< Updated upstream
         const loadingEl = document.getElementById('loadingState');
+=======
+        const loadingEl = document.getElementById('loadingIndicator');
+>>>>>>> Stashed changes
         if (loadingEl) loadingEl.classList.remove('hidden');
     }
 
     hideLoading(context) {
         this.loadingStates.delete(context);
         if (this.loadingStates.size === 0) {
+<<<<<<< Updated upstream
             const loadingEl = document.getElementById('loadingState');
             if (loadingEl) loadingEl.classList.add('hidden');
             const accountContent = document.getElementById("accountContent");
             if (accountContent) accountContent.classList.remove("hidden");
+=======
+            const loadingEl = document.getElementById('loadingIndicator');
+            if (loadingEl) loadingEl.classList.add('hidden');
+>>>>>>> Stashed changes
         }
     }
 
@@ -637,6 +682,7 @@ class RealAccountDetail {
     cleanup() {
         this.tradingCharts.cleanup();
     }
+<<<<<<< Updated upstream
     // Tab Management
     initializeTabSwitching() {
         const tabButtons = {
@@ -699,6 +745,8 @@ class RealAccountDetail {
         // TODO: Implement P&L export
         this.showSuccess('Export feature coming soon!');
     }}
+=======
+>>>>>>> Stashed changes
 }
 
 // Initialize account detail when DOM is loaded
@@ -711,6 +759,7 @@ window.addEventListener('beforeunload', () => {
     if (window.accountDetail) {
         window.accountDetail.cleanup();
     }
+<<<<<<< Updated upstream
 });
     // Tab Management
         this.showSuccess('Export feature coming soon\!');
@@ -779,3 +828,6 @@ window.addEventListener('beforeunload', () => {
         // TODO: Implement P&L export
         this.showSuccess('Export feature coming soon!');
     }
+=======
+});
+>>>>>>> Stashed changes

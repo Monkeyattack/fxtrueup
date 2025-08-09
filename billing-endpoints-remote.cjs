@@ -3,12 +3,8 @@
 
 const BillingService = require('./billing-service.cjs');
 const jwt = require('jsonwebtoken');
-<<<<<<< Updated upstream
 const stripe = process.env.STRIPE_SECRET_KEY ? require("stripe")(process.env.STRIPE_SECRET_KEY) : null;
 const { paymentRateLimit, billingInfoRateLimit, webhookRateLimit } = require('./payment-rate-limit.cjs');
-=======
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
->>>>>>> Stashed changes
 
 // Initialize billing service
 const billingService = new BillingService();
@@ -36,7 +32,6 @@ const verifyStripeWebhook = (req, res, next) => {
     const sig = req.headers['stripe-signature'];
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-<<<<<<< Updated upstream
     // Check if webhook secret is configured
     if (!endpointSecret) {
         console.error('STRIPE_WEBHOOK_SECRET not configured');
@@ -49,34 +44,25 @@ const verifyStripeWebhook = (req, res, next) => {
         return res.status(400).json({ error: 'Missing required signature' });
     }
 
-=======
->>>>>>> Stashed changes
     try {
         req.stripeEvent = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
         next();
     } catch (err) {
         console.error('Webhook signature verification failed:', err.message);
-<<<<<<< Updated upstream
         // Don't expose internal error details
         return res.status(400).json({ error: 'Invalid signature' });
-=======
-        return res.status(400).send(`Webhook Error: ${err.message}`);
->>>>>>> Stashed changes
     }
 };
 
 // Initialize billing routes
 function initializeBillingRoutes(app) {
     
-<<<<<<< Updated upstream
     // Check if Stripe is configured
     if (!stripe || !process.env.STRIPE_SECRET_KEY) {
         console.warn("⚠️  Stripe not configured - billing endpoints disabled");
         return;
     }
     
-=======
->>>>>>> Stashed changes
     // ==============================================
     // SUBSCRIPTION MANAGEMENT ENDPOINTS
     // ==============================================
@@ -121,11 +107,7 @@ function initializeBillingRoutes(app) {
     });
 
     // Create new subscription
-<<<<<<< Updated upstream
     app.post('/api/billing/subscription', authenticateToken, paymentRateLimit, async (req, res) => {
-=======
-    app.post('/api/billing/subscription', authenticateToken, async (req, res) => {
->>>>>>> Stashed changes
         try {
             const { priceId, paymentMethodId, trialDays } = req.body;
             const { email, name } = req.user;
@@ -153,7 +135,6 @@ function initializeBillingRoutes(app) {
             });
         } catch (error) {
             console.error('Error creating subscription:', error);
-<<<<<<< Updated upstream
             
             // Sanitize Stripe errors for client
             let clientError = 'Failed to create subscription';
@@ -167,21 +148,12 @@ function initializeBillingRoutes(app) {
             res.status(500).json({
                 success: false,
                 error: clientError
-=======
-            res.status(500).json({
-                success: false,
-                error: error.message || 'Failed to create subscription'
->>>>>>> Stashed changes
             });
         }
     });
 
     // Update subscription (change plan)
-<<<<<<< Updated upstream
     app.put('/api/billing/subscription', authenticateToken, paymentRateLimit, async (req, res) => {
-=======
-    app.put('/api/billing/subscription', authenticateToken, async (req, res) => {
->>>>>>> Stashed changes
         try {
             const { priceId } = req.body;
             
@@ -257,11 +229,7 @@ function initializeBillingRoutes(app) {
     // ==============================================
 
     // Create payment method setup intent
-<<<<<<< Updated upstream
     app.post('/api/billing/setup-intent', authenticateToken, paymentRateLimit, async (req, res) => {
-=======
-    app.post('/api/billing/setup-intent', authenticateToken, async (req, res) => {
->>>>>>> Stashed changes
         try {
             const customerId = await billingService.createOrGetCustomer(
                 req.user.id,
@@ -289,11 +257,7 @@ function initializeBillingRoutes(app) {
     });
 
     // Add payment method
-<<<<<<< Updated upstream
     app.post('/api/billing/payment-method', authenticateToken, paymentRateLimit, async (req, res) => {
-=======
-    app.post('/api/billing/payment-method', authenticateToken, async (req, res) => {
->>>>>>> Stashed changes
         try {
             const { paymentMethodId } = req.body;
             
@@ -327,11 +291,7 @@ function initializeBillingRoutes(app) {
     // ==============================================
 
     // Create billing portal session
-<<<<<<< Updated upstream
     app.post('/api/billing/portal', authenticateToken, billingInfoRateLimit, async (req, res) => {
-=======
-    app.post('/api/billing/portal', authenticateToken, async (req, res) => {
->>>>>>> Stashed changes
         try {
             const { returnUrl = `${process.env.API_URL}/dashboard` } = req.body;
             
@@ -365,10 +325,7 @@ function initializeBillingRoutes(app) {
 
     // Stripe webhook handler
     app.post('/api/billing/webhook', 
-<<<<<<< Updated upstream
         webhookRateLimit,
-=======
->>>>>>> Stashed changes
         // Parse raw body for webhook signature verification
         (req, res, next) => {
             if (req.is('application/json')) {
@@ -400,11 +357,7 @@ function initializeBillingRoutes(app) {
     // ==============================================
 
     // Get user invoices
-<<<<<<< Updated upstream
     app.get('/api/billing/invoices', authenticateToken, billingInfoRateLimit, async (req, res) => {
-=======
-    app.get('/api/billing/invoices', authenticateToken, async (req, res) => {
->>>>>>> Stashed changes
         try {
             const customerId = await billingService.createOrGetCustomer(
                 req.user.id,

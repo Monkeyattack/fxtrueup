@@ -129,7 +129,11 @@ class APIClient {
         }
 
         return this.getCachedData(cacheKey, async () => {
+<<<<<<< Updated upstream
             return await this.request(`/api/accounts/${accountId}/details`);
+=======
+            return await this.request(`/accounts/${accountId}/details`);
+>>>>>>> Stashed changes
         });
     }
 
@@ -138,7 +142,11 @@ class APIClient {
      */
     async getAccountDeals(accountId, options = {}) {
         const { startDate, endDate, limit = 1000 } = options;
+<<<<<<< Updated upstream
         let endpoint = `/api/accounts/${accountId}/deals?limit=${limit}`;
+=======
+        let endpoint = `/accounts/${accountId}/deals?limit=${limit}`;
+>>>>>>> Stashed changes
         
         if (startDate) {
             endpoint += `&startDate=${startDate}`;
@@ -165,7 +173,11 @@ class APIClient {
         }
 
         return this.getCachedData(cacheKey, async () => {
+<<<<<<< Updated upstream
             return await this.request(`/api/accounts/${accountId}/positions`);
+=======
+            return await this.request(`/accounts/${accountId}/positions`);
+>>>>>>> Stashed changes
         });
     }
 
@@ -180,7 +192,11 @@ class APIClient {
         }
 
         return this.getCachedData(cacheKey, async () => {
+<<<<<<< Updated upstream
             return await this.request(`/api/analytics?period=${period}`);
+=======
+            return await this.request(`/analytics?period=${period}`);
+>>>>>>> Stashed changes
         });
     }
 
@@ -188,7 +204,11 @@ class APIClient {
      * Get portfolio performance data for charts
      */
     async getPortfolioPerformance(period = '30d', accountIds = []) {
+<<<<<<< Updated upstream
         let endpoint = `/api/analytics/performance?period=${period}`;
+=======
+        let endpoint = `/analytics/performance?period=${period}`;
+>>>>>>> Stashed changes
         
         if (accountIds.length > 0) {
             endpoint += `&accounts=${accountIds.join(',')}`;
@@ -206,7 +226,11 @@ class APIClient {
      */
     async getTradeDistribution(accountId, options = {}) {
         const { groupBy = 'symbol', period = '30d' } = options;
+<<<<<<< Updated upstream
         const endpoint = `/api/accounts/${accountId}/distribution?groupBy=${groupBy}&period=${period}`;
+=======
+        const endpoint = `/accounts/${accountId}/distribution?groupBy=${groupBy}&period=${period}`;
+>>>>>>> Stashed changes
         
         const cacheKey = `distribution-${accountId}-${groupBy}-${period}`;
         
@@ -222,7 +246,11 @@ class APIClient {
         const cacheKey = `metrics-${accountId}-${period}`;
         
         return this.getCachedData(cacheKey, async () => {
+<<<<<<< Updated upstream
             return await this.request(`/api/accounts/${accountId}/metrics?period=${period}`);
+=======
+            return await this.request(`/accounts/${accountId}/metrics?period=${period}`);
+>>>>>>> Stashed changes
         });
     }
 
@@ -230,7 +258,11 @@ class APIClient {
      * Get multiple accounts comparison data
      */
     async getAccountsComparison(accountIds, period = '30d') {
+<<<<<<< Updated upstream
         const endpoint = `/api/analytics/comparison?accounts=${accountIds.join(',')}&period=${period}`;
+=======
+        const endpoint = `/analytics/comparison?accounts=${accountIds.join(',')}&period=${period}`;
+>>>>>>> Stashed changes
         const cacheKey = `comparison-${accountIds.join(',')}-${period}`;
         
         return this.getCachedData(cacheKey, async () => {
@@ -245,7 +277,11 @@ class APIClient {
         const cacheKey = `drawdown-${accountId}-${period}`;
         
         return this.getCachedData(cacheKey, async () => {
+<<<<<<< Updated upstream
             return await this.request(`/api/accounts/${accountId}/drawdown?period=${period}`);
+=======
+            return await this.request(`/accounts/${accountId}/drawdown?period=${period}`);
+>>>>>>> Stashed changes
         });
     }
 
@@ -256,7 +292,11 @@ class APIClient {
         const cacheKey = `risk-${accountId}-${period}`;
         
         return this.getCachedData(cacheKey, async () => {
+<<<<<<< Updated upstream
             return await this.request(`/api/accounts/${accountId}/risk?period=${period}`);
+=======
+            return await this.request(`/accounts/${accountId}/risk?period=${period}`);
+>>>>>>> Stashed changes
         });
     }
 
@@ -271,7 +311,11 @@ class APIClient {
         }
 
         return this.getCachedData(cacheKey, async () => {
+<<<<<<< Updated upstream
             return await this.request(`/api/accounts/${accountId}/info`);
+=======
+            return await this.request(`/accounts/${accountId}/info`);
+>>>>>>> Stashed changes
         });
     }
 
@@ -358,7 +402,11 @@ class APIClient {
      */
     async logout() {
         try {
+<<<<<<< Updated upstream
             await this.request('/api/auth/logout', { method: 'POST' });
+=======
+            await this.request('/auth/logout', { method: 'POST' });
+>>>>>>> Stashed changes
         } catch (error) {
             console.error('Logout API call failed:', error);
         } finally {

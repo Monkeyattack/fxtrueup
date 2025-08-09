@@ -1,10 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const { v4: uuidv4 } = require('uuid');
-<<<<<<< Updated upstream
 const stripe = process.env.STRIPE_SECRET_KEY ? require("stripe")(process.env.STRIPE_SECRET_KEY) : null;
-=======
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
->>>>>>> Stashed changes
 
 class BillingService {
     constructor(dbPath = './cache.db') {
@@ -14,13 +10,10 @@ class BillingService {
 
     // Initialize Stripe products and prices
     async initializeStripeProducts() {
-<<<<<<< Updated upstream
         if (!stripe) {
             console.warn("⚠️  Stripe not configured - billing features disabled");
             return null;
         }
-=======
->>>>>>> Stashed changes
         try {
             // Create main product
             const product = await stripe.products.create({
@@ -409,11 +402,7 @@ class BillingService {
             gracePeriodEnd.setDate(gracePeriodEnd.getDate() + this.gracePeriodDays);
             
             await this.updateSubscriptionStatus(invoice.subscription, 'past_due', {
-<<<<<<< Updated upstream
                 grace_period_ends_at: gracePeriodEnd.toISOString()
-=======
-                grace_period_end: gracePeriodEnd.toISOString()
->>>>>>> Stashed changes
             });
         }
         
@@ -430,7 +419,6 @@ class BillingService {
     // Database helper methods
     async updateSubscriptionStatus(stripeSubscriptionId, status, additionalFields = {}) {
         return new Promise((resolve, reject) => {
-<<<<<<< Updated upstream
             // Whitelist allowed fields to prevent SQL injection
             const allowedFields = [
                 'grace_period_ends_at',
@@ -452,14 +440,6 @@ class BillingService {
                 } else {
                     console.warn(`Attempted to update non-whitelisted field: ${key}`);
                 }
-=======
-            let setClause = 'status = ?, updated_at = CURRENT_TIMESTAMP';
-            let params = [status];
-
-            Object.entries(additionalFields).forEach(([key, value]) => {
-                setClause += `, ${key} = ?`;
-                params.push(value);
->>>>>>> Stashed changes
             });
 
             params.push(stripeSubscriptionId);

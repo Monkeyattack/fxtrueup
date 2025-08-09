@@ -7,67 +7,30 @@ class AccountDetail {
         this.transactions = [];
         this.positions = [];
         this.charts = {};
-        this.tradingCharts = null;
-        this.chartsInitialized = false;
-        this.metrics = null;
         this.init();
     }
 
     async init() {
-        try {
-            // Get account ID from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            this.accountId = urlParams.get('id');
-            
-            if (!this.accountId) {
-                window.location.href = '/accounts';
-                return;
-            }
-
-            // Get token
-            this.token = localStorage.getItem('authToken');
-            if (!this.token || !(await this.checkAuth())) {
-                window.location.href = '/?auth=required';
-                return;
-            }
-
-<<<<<<< Updated upstream
-            this.initializeEventListeners();
-            this.loadUserData();
-            
-            // Load data with proper error handling - using Promise.allSettled 
-            // to ensure all data loads are attempted even if some fail
-            const results = await Promise.allSettled([
-                this.loadAccountData(),
-                this.loadTransactions(),
-                this.loadPositions(),
-                this.loadMetrics()
-            ]);
-            
-            // Log any failed operations for debugging
-            results.forEach((result, index) => {
-                if (result.status === 'rejected') {
-                    const operations = ['loadAccountData', 'loadTransactions', 'loadPositions', 'loadMetrics'];
-                    console.error('Operation failed:', operations[index], result.reason);
-                }
-            });
-            
-        } catch (error) {
-            console.error('Error in account detail initialization:', error);
-            this.showError('Failed to initialize account details');
-        } finally {
-            // Always hide loading state regardless of success or failure
-            this.hideLoading();
+        // Get account ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        this.accountId = urlParams.get('id');
+        
+        if (!this.accountId) {
+            window.location.href = '/accounts';
+            return;
         }
-=======
+
+        // Get token
+        this.token = localStorage.getItem('authToken');
+        if (!this.token || !(await this.checkAuth())) {
+            window.location.href = '/?auth=required';
+            return;
+        }
+
         this.initializeEventListeners();
         this.loadUserData();
         await this.loadAccountData();
-        await this.loadTransactions();
-        await this.loadPositions();
         await this.loadMetrics();
-        this.hideLoading();
->>>>>>> Stashed changes
     }
 
     async checkAuth() {
@@ -128,129 +91,6 @@ class AccountDetail {
         return ((wins / trades.length) * 100).toFixed(1);
     }
 
-    loadUserData() {
-        // Update user info in header
-        if (this.user) {
-            const userEmailElement = document.getElementById('userEmail');
-            const userAvatarElement = document.getElementById('userAvatar');
-            
-            if (userEmailElement) {
-                userEmailElement.textContent = this.user.email || '';
-            }
-            if (userAvatarElement) {
-                userAvatarElement.src = this.user.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(this.user.name || 'User') + '&background=1e40af&color=fff';
-                userAvatarElement.alt = this.user.name || 'User';
-            }
-        }
-    }
-
-    async loadAccountData() {
-        try {
-            const response = await fetch(`/api/accounts/${this.accountId}`, {
-                headers: { 'Authorization': `Bearer ${this.token}` }
-            });
-            
-            if (response.ok) {
-                this.account = await response.json();
-                this.updateAccountHeader();
-                this.updateMetrics(this.account);
-                this.hideError();
-            } else {
-                this.showError('Failed to load account data');
-            }
-        } catch (error) {
-            console.error('Error loading account data:', error);
-            this.showError('Network error while loading account');
-        }
-    }
-
-    updateAccountHeader() {
-        // Update page title and account info
-        const accountNameElement = document.querySelector('h1');
-        if (accountNameElement && this.account) {
-            accountNameElement.textContent = this.account.accountName || 'Unknown Account';
-        }
-
-        const accountInfoElement = document.getElementById('accountInfo');
-        if (accountInfoElement && this.account) {
-            accountInfoElement.textContent = `${this.account.accountType?.toUpperCase() || 'MT4'} • ${this.account.login || 'N/A'} • ${this.account.brokerName || 'Unknown Broker'}`;
-        }
-    }
-
-    async loadTransactions() {
-        try {
-            const response = await fetch(`/api/accounts/${this.accountId}/history`, {
-                headers: { 'Authorization': `Bearer ${this.token}` }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                this.transactions = data.deals || [];
-                this.displayTransactions();
-            }
-        } catch (error) {
-            console.error('Error loading transactions:', error);
-        }
-    }
-
-    async loadPositions() {
-        try {
-            const response = await fetch(`/api/accounts/${this.accountId}/positions`, {
-                headers: { 'Authorization': `Bearer ${this.token}` }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                this.positions = data.positions || [];
-                this.displayPositions();
-            }
-        } catch (error) {
-            console.error('Error loading positions:', error);
-        }
-    }
-
-    initializeEventListeners() {
-        // Add logout button handler
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.logout();
-            });
-        }
-
-        // Add tab switching handlers
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const tab = btn.id.replace('Tab', '');
-                this.switchTab(tab);
-            });
-        });
-
-        // Add filter handlers
-        const transactionFilter = document.getElementById('transactionFilter');
-        if (transactionFilter) {
-            transactionFilter.addEventListener('change', () => this.filterTransactions());
-        }
-
-        const pnlPeriod = document.getElementById('pnlPeriod');
-        if (pnlPeriod) {
-            pnlPeriod.addEventListener('change', () => this.loadPnLStatement());
-        }
-
-        // Add export handlers
-        const exportTransactionsBtn = document.getElementById('exportTransactions');
-        if (exportTransactionsBtn) {
-            exportTransactionsBtn.addEventListener('click', () => this.exportTransactions());
-        }
-
-        const exportPnLBtn = document.getElementById('exportPnL');
-        if (exportPnLBtn) {
-            exportPnLBtn.addEventListener('click', () => this.exportPnL());
-        }
-    }
-
     async loadMetrics() {
         try {
             const response = await fetch(`/api/accounts/${this.accountId}/metrics`, {
@@ -258,8 +98,8 @@ class AccountDetail {
             });
             
             if (response.ok) {
-                this.metrics = await response.json();
-                this.displayDetailedMetrics(this.metrics);
+                const metrics = await response.json();
+                this.displayDetailedMetrics(metrics);
             }
         } catch (error) {
             console.error('Error loading metrics:', error);
@@ -651,10 +491,230 @@ class AccountDetail {
     }
 
     loadAnalytics() {
-        // Analytics will be handled by Lightweight Charts in the Analytics tab
-        console.log('Analytics loaded - charts initialized on tab switch');
+        this.loadEquityChart();
+        this.loadMonthlyReturnsChart();
+        this.loadWinLossChart();
+        this.loadTradingStats();
     }
 
+    loadEquityChart() {
+        const ctx = document.getElementById('equityChart');
+        if (!ctx) return;
+
+        // Calculate cumulative P&L
+        const sortedTransactions = [...this.transactions]
+            .filter(t => t.type === 'DEAL_TYPE_BUY' || t.type === 'DEAL_TYPE_SELL')
+            .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+        let cumulative = 0;
+        const data = sortedTransactions.map(t => {
+            const profit = (t.profit || 0) + (t.commission || 0) + (t.swap || 0);
+            cumulative += profit;
+            return {
+                x: new Date(t.time),
+                y: cumulative
+            };
+        });
+
+        if (this.charts.equity) {
+            this.charts.equity.destroy();
+        }
+
+        this.charts.equity = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Equity Curve',
+                    data: data,
+                    borderColor: data.length > 0 && data[data.length - 1].y >= 0 ? '#10b981' : '#ef4444',
+                    backgroundColor: data.length > 0 && data[data.length - 1].y >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day'
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    loadMonthlyReturnsChart() {
+        const ctx = document.getElementById('monthlyReturnsChart');
+        if (!ctx) return;
+
+        // Group transactions by month
+        const monthlyData = {};
+        this.transactions
+            .filter(t => t.type === 'DEAL_TYPE_BUY' || t.type === 'DEAL_TYPE_SELL')
+            .forEach(t => {
+                const date = new Date(t.time);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                
+                if (!monthlyData[monthKey]) {
+                    monthlyData[monthKey] = 0;
+                }
+                
+                monthlyData[monthKey] += (t.profit || 0) + (t.commission || 0) + (t.swap || 0);
+            });
+
+        const sortedMonths = Object.keys(monthlyData).sort();
+        const values = sortedMonths.map(month => monthlyData[month]);
+        const colors = values.map(v => v >= 0 ? '#10b981' : '#ef4444');
+
+        if (this.charts.monthly) {
+            this.charts.monthly.destroy();
+        }
+
+        this.charts.monthly = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedMonths.map(m => {
+                    const [year, month] = m.split('-');
+                    return new Date(year, month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                }),
+                datasets: [{
+                    label: 'Monthly Returns',
+                    data: values,
+                    backgroundColor: colors
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    loadWinLossChart() {
+        const ctx = document.getElementById('winLossChart');
+        if (!ctx) return;
+
+        const metrics = this.calculatePnLMetrics(
+            this.transactions.filter(t => t.type === 'DEAL_TYPE_BUY' || t.type === 'DEAL_TYPE_SELL')
+        );
+
+        if (this.charts.winLoss) {
+            this.charts.winLoss.destroy();
+        }
+
+        this.charts.winLoss = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Wins', 'Losses'],
+                datasets: [{
+                    data: [metrics.winCount, metrics.lossCount],
+                    backgroundColor: ['#10b981', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    loadTradingStats() {
+        const container = document.getElementById('tradingStats');
+        if (!container) return;
+
+        const metrics = this.calculatePnLMetrics(
+            this.transactions.filter(t => t.type === 'DEAL_TYPE_BUY' || t.type === 'DEAL_TYPE_SELL')
+        );
+
+        // Calculate additional stats
+        const trades = this.transactions.filter(t => t.type === 'DEAL_TYPE_BUY' || t.type === 'DEAL_TYPE_SELL');
+        const profits = trades.map(t => (t.profit || 0) + (t.commission || 0) + (t.swap || 0)).filter(p => p !== 0);
+        
+        let maxDrawdown = 0;
+        let peak = 0;
+        let runningTotal = 0;
+        
+        trades.forEach(t => {
+            runningTotal += (t.profit || 0) + (t.commission || 0) + (t.swap || 0);
+            if (runningTotal > peak) {
+                peak = runningTotal;
+            }
+            const drawdown = peak - runningTotal;
+            if (drawdown > maxDrawdown) {
+                maxDrawdown = drawdown;
+            }
+        });
+
+        const avgTrade = profits.length > 0 
+            ? profits.reduce((a, b) => a + b, 0) / profits.length 
+            : 0;
+
+        container.innerHTML = `
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-gray-600">Total Trades</p>
+                    <p class="font-semibold">${metrics.totalTrades}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Win Rate</p>
+                    <p class="font-semibold">${metrics.winRate}%</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Profit Factor</p>
+                    <p class="font-semibold">${metrics.profitFactor}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Max Drawdown</p>
+                    <p class="font-semibold text-red-600">$${maxDrawdown.toFixed(2)}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Average Trade</p>
+                    <p class="font-semibold ${avgTrade >= 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${avgTrade >= 0 ? '+' : ''}$${avgTrade.toFixed(2)}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Total Volume</p>
+                    <p class="font-semibold">${metrics.totalVolume} lots</p>
+                </div>
+            </div>
+        `;
+    }
 
     showManualAccountData() {
         // For manual accounts, show limited data
@@ -699,26 +759,6 @@ class AccountDetail {
         });
         
         document.getElementById(`${tab}Content`).classList.remove('hidden');
-        
-        // Initialize charts when analytics tab is opened
-        if (tab === 'analytics' && !this.chartsInitialized && this.metrics && this.transactions.length > 0) {
-            this.initializeCharts();
-        }
-    }
-
-    initializeCharts() {
-        if (!window.TradingCharts) {
-            console.error('TradingCharts library not loaded');
-            return;
-        }
-
-        try {
-            this.tradingCharts = new window.TradingCharts();
-            this.tradingCharts.initializeCharts(this.metrics, this.transactions);
-            this.chartsInitialized = true;
-        } catch (error) {
-            console.error('Error initializing charts:', error);
-        }
     }
 
     filterTransactions() {
@@ -761,30 +801,7 @@ class AccountDetail {
         window.print();
     }
 
-    hideLoading() {
-        const loadingState = document.getElementById('loadingState');
-        if (loadingState) {
-            loadingState.classList.add('hidden');
-        }
-        const accountContent = document.getElementById('accountContent');
-        if (accountContent) {
-            accountContent.classList.remove('hidden');
-        }
-    }
-    
-    hideError() {
-        const errorState = document.getElementById('errorState');
-        if (errorState) {
-            errorState.classList.add('hidden');
-        }
-    }
-    
     showError(message) {
-        // Don't show error if we have account data
-        if (this.account && this.account.accountName) {
-            console.warn('Suppressed error:', message);
-            return;
-        }
         document.getElementById('loadingState').classList.add('hidden');
         document.getElementById('errorState').classList.remove('hidden');
         document.getElementById('errorMessage').textContent = message;

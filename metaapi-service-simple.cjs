@@ -1,5 +1,8 @@
 const MetaApi = require('metaapi.cloud-sdk').default;
+<<<<<<< Updated upstream
 const cache = require('./cache-service.cjs');
+=======
+>>>>>>> Stashed changes
 
 class MetaApiService {
   constructor() {
@@ -48,6 +51,7 @@ class MetaApiService {
 
   async getAccountMetrics(accountId) {
     try {
+<<<<<<< Updated upstream
       // Check cache first
       const cached = cache.get('metrics', accountId);
       if (cached) {
@@ -58,6 +62,11 @@ class MetaApiService {
       if (!account) return null;
       
       console.log('💰 Fetching fresh metrics from MetaApi for:', accountId);
+=======
+      const account = await this.getAccount(accountId);
+      if (!account) return null;
+      
+>>>>>>> Stashed changes
       const connection = account.getStreamingConnection();
       await connection.connect();
       await connection.waitSynchronized();
@@ -69,7 +78,11 @@ class MetaApiService {
       await connection.close();
       
       if (accountInfo) {
+<<<<<<< Updated upstream
         const metrics = {
+=======
+        return {
+>>>>>>> Stashed changes
           balance: accountInfo.balance,
           equity: accountInfo.equity,
           profit: accountInfo.profit || 0,
@@ -83,27 +96,34 @@ class MetaApiService {
           leverage: accountInfo.leverage || 0,
           currency: accountInfo.currency
         };
+<<<<<<< Updated upstream
         
         // Cache the result
         cache.set('metrics', accountId, metrics);
         return metrics;
+=======
+>>>>>>> Stashed changes
       }
       
       return null;
     } catch (error) {
       console.error('Failed to get metrics for ' + accountId + ':', error.message);
+<<<<<<< Updated upstream
       // Return cached data if available, even if expired
       const cached = cache.get('metrics', accountId);
       if (cached) {
         console.log('⚠️ Returning stale cache due to error');
         return cached;
       }
+=======
+>>>>>>> Stashed changes
       return null;
     }
   }
 
   async getPositions(accountId) {
     try {
+<<<<<<< Updated upstream
       // Check cache first
       const cached = cache.get('positions', accountId);
       if (cached) {
@@ -114,6 +134,11 @@ class MetaApiService {
       if (!account) return [];
       
       console.log('📊 Fetching fresh positions from MetaApi for:', accountId);
+=======
+      const account = await this.getAccount(accountId);
+      if (!account) return [];
+      
+>>>>>>> Stashed changes
       const connection = account.getStreamingConnection();
       await connection.connect();
       await connection.waitSynchronized();
@@ -122,6 +147,7 @@ class MetaApiService {
       
       await connection.close();
       
+<<<<<<< Updated upstream
       // Cache the result
       cache.set('positions', accountId, positions);
       return positions;
@@ -133,12 +159,18 @@ class MetaApiService {
         console.log('⚠️ Returning stale cache due to error');
         return cached;
       }
+=======
+      return positions;
+    } catch (error) {
+      console.error('Failed to get positions for ' + accountId + ':', error.message);
+>>>>>>> Stashed changes
       return [];
     }
   }
 
   async getDeals(accountId, startTime, endTime) {
     try {
+<<<<<<< Updated upstream
       // Check cache first
       const cached = cache.get('deals', accountId);
       if (cached) {
@@ -191,6 +223,24 @@ class MetaApiService {
         console.log('⚠️ Returning stale cache due to error');
         return cached;
       }
+=======
+      const account = await this.getAccount(accountId);
+      if (!account) return [];
+      
+      const connection = account.getRPCConnection();
+      await connection.connect();
+      
+      const deals = await connection.getHistoryOrdersByTimeRange(
+        startTime || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        endTime || new Date()
+      );
+      
+      await connection.close();
+      
+      return deals.filter(deal => deal.type === 'DEAL_TYPE_BUY' || deal.type === 'DEAL_TYPE_SELL');
+    } catch (error) {
+      console.error('Failed to get deals for ' + accountId + ':', error.message);
+>>>>>>> Stashed changes
       return [];
     }
   }
