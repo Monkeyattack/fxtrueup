@@ -10,7 +10,6 @@ const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
 const jwt = require('jsonwebtoken');
-const multer = require("multer");
 const CSVTradeHandler = require("./csv-trade-handler.cjs");
 
 // Load environment variables
@@ -1013,7 +1012,7 @@ app.get('/api/accounts/:id/deals', authenticateJWT, async (req, res) => {
     console.error('Error in deals endpoint:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});});
+});
 
 app.put('/api/accounts/:id', authenticateJWT, (req, res) => {
   try {
