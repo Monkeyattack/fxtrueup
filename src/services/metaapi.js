@@ -1,4 +1,6 @@
-import MetaApi from 'metaapi.cloud-sdk';
+// Import the Node.js specific distribution to avoid browser-specific code
+import MetaApi from 'metaapi.cloud-sdk/esm-node';
+import poolClient from './poolClient.js';
 import { logger } from '../utils/logger.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
 
@@ -68,36 +70,44 @@ class MetaApiService {
 
   async getAccountMetrics(accountId, startTime, endTime) {
     try {
-      const account = await this.api.metatraderAccountApi.getAccount(accountId);
-      const connection = await account.getStreamingConnection();
-      await connection.connect();
-      await connection.waitSynchronized();
-
-      const historyApi = connection.historyStorage;
-      const terminalState = connection.terminalState;
-
-      // Get account information
-      const accountInfo = terminalState.accountInformation;
+      // Use pool client to get metrics from MetaStats
+      const metrics = await poolClient.getAccountMetrics(accountId);
       
-      // Get deals (closed trades) within time range
-      const deals = await historyApi.deals
-        .filter(deal => {
-          const dealTime = new Date(deal.time);
-          return dealTime >= startTime && dealTime <= endTime;
-        })
-        .sort((a, b) => new Date(a.time) - new Date(b.time));
-
-      // Get current open positions
-      const positions = terminalState.positions;
-
-      // Calculate metrics
-      const metrics = this.calculateMetrics(accountInfo, deals, positions);
+      // Get account info and positions from pool
+      const accountInfo = await poolClient.getAccountInfo(accountId);
+      const positions = await poolClient.getOpenTrades(accountId);
+      
+      // Get trade history if time range is specified
+      let trades = [];
+      if (startTime && endTime) {
+        const days = Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24));
+        const tradeHistory = await poolClient.getTradeHistory(accountId, days);
+        trades = tradeHistory.trades || [];
+      }
 
       return {
         accountInfo,
-        deals,
-        positions,
-        metrics,
+        deals: trades,
+        positions: positions.open_trades || [],
+        metrics: {
+          balance: metrics.balance || 0,
+          equity: metrics.equity || 0,
+          margin: metrics.margin || 0,
+          freeMargin: metrics.freeMargin || 0,
+          marginLevel: metrics.marginLevel || 0,
+          totalTrades: metrics.trades || 0,
+          openPositions: positions.count || 0,
+          profit: metrics.profit || 0,
+          winRate: metrics.winRate || 0,
+          profitFactor: metrics.profitFactor || 0,
+          averageWin: metrics.averageWin || 0,
+          averageLoss: metrics.averageLoss || 0,
+          maxDrawdown: metrics.maxDrawdownPercent || 0,
+          expectancy: metrics.expectancy || 0,
+          sharpeRatio: metrics.sharpeRatio || 0,
+          sortinoRatio: metrics.sortinoRatio || 0,
+          calmarRatio: metrics.calmarRatio || 0
+        },
         lastUpdate: new Date().toISOString()
       };
     } catch (error) {
@@ -184,13 +194,47 @@ class MetaApiService {
     }
   }
 
+  async getDailyGrowth(accountId, days = 30) {
+    try {
+      const growthData = await poolClient.getDailyGrowth(accountId, days);
+      return growthData;
+    } catch (error) {
+      logger.error(`Failed to get daily growth for ${accountId}:`, error);
+      throw error;
+    }
+  }
+
+  async getRiskStatus(accountId) {
+    try {
+      const riskStatus = await poolClient.getRiskStatus(accountId);
+      return riskStatus;
+    } catch (error) {
+      logger.error(`Failed to get risk status for ${accountId}:`, error);
+      throw error;
+    }
+  }
+
+  async getSymbolStatistics(accountId, symbol) {
+    try {
+      const stats = await poolClient.getSymbolStats(accountId, symbol);
+      return stats;
+    } catch (error) {
+      logger.error(`Failed to get symbol statistics for ${symbol}:`, error);
+      throw error;
+    }
+  }
+
   async getAccountConnectionStatus(accountId) {
     try {
-      const account = await this.api.metatraderAccountApi.getAccount(accountId);
+      // Get account info from pool which includes connection status
+      const accountInfo = await poolClient.getAccountInfo(accountId);
+      const poolStats = await poolClient.getPoolStats();
+      
       return {
-        state: account.state,
-        connectionStatus: account.connectionStatus,
-        synchronizationStatus: account.synchronizationStatus
+        state: accountInfo ? 'DEPLOYED' : 'UNDEPLOYED',
+        connectionStatus: accountInfo ? 'CONNECTED' : 'DISCONNECTED',
+        synchronizationStatus: accountInfo ? 'SYNCHRONIZED' : 'NOT_SYNCHRONIZED',
+        poolStatus: poolStats
       };
     } catch (error) {
       logger.error(`Failed to get connection status for ${accountId}:`, error);

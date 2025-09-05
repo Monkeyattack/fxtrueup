@@ -31,6 +31,37 @@
       "userId": "57b5347a-acac-4cc4-a8fe-b7ea95bbe4cb",
       "createdAt": "2025-08-06T23:13:38.780Z",
       "metaApiAccountId": "d25b9ece-3422-43e8-a59b-cf85246beb3b"
+    },
+    {
+      "connectionMethod": "metaapi",
+      "accountName": "Prop Firm Demo $50k",
+      "accountType": "mt5",
+      "login": "3062432",
+      "serverName": "PlexyTrade-Server01",
+      "brokerName": "PlexyTrade",
+      "accountRegion": "",
+      "password": "d07uL40Z%I",
+      "readOnlyPassword": "",
+      "magic": "",
+      "riskManagementApiEnabled": "false",
+      "baseCurrency": "USD",
+      "copyFactoryRoles": "",
+      "initialBalance": "50000",
+      "currentBalance": "",
+      "equity": "",
+      "categoryTags": "prop-firm",
+      "accountNotes": "Prop Firm Demo Account",
+      "tags": [
+        "demo",
+        "prop-firm",
+        "mt5",
+        "50k",
+        "plexytrade"
+      ],
+      "id": "1754987654321",
+      "userId": "57b5347a-acac-4cc4-a8fe-b7ea95bbe4cb",
+      "createdAt": "2025-01-12T15:00:00.000Z",
+      "metaApiAccountId": "166bea1c-306e-4a6a-8720-823a0134474f"
     }
   ]
 }

@@ -37,8 +37,34 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "Bash(./deploy-to-vps.sh)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(grep:*)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/backend/services/metaapi/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/**)",
+      "WebSearch",
+      "Read(/home/claude-dev/repos/meta-trader-hub/backend/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/backend/**)",
+      "Bash(npm install:*)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/backend/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/backend/logs/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/account_data/**)",
+      "Bash(pm2 list:*)",
+      "Bash(pm2 start:*)",
+      "Bash(pm2 stop:*)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/docs/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/docs/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/backend/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/backend/services/metaapi/**)",
+      "WebFetch(domain:tigerfunded.com)",
+      "WebFetch(domain:app.theneo.io)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/home/claude-dev/repos/meta-trader-hub/"
+    ]
   }
 }

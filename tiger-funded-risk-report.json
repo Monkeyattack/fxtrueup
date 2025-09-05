@@ -1,0 +1,249 @@
+{
+  "timestamp": "2025-09-04T19:12:25.730Z",
+  "sourceStats": {
+    "balance": 5000,
+    "totalReturn": 25.9,
+    "monthlyReturn": 8.63,
+    "winRate": 74.6,
+    "totalTrades": 197,
+    "martingaleTrades": 102,
+    "nonMartingaleTrades": 95,
+    "largestSingleLoss": -87.01,
+    "largestMartingaleSequence": -362.31,
+    "averageWin": 23.45,
+    "averageLoss": -31.78,
+    "maxPositionsHeld": 23,
+    "maxTotalVolume": 0.37,
+    "averageHoldTime": 4.2
+  },
+  "tigerRules": {
+    "balance": 100000,
+    "maxDailyLoss": 5,
+    "maxTotalDrawdown": 12,
+    "profitTargetPhase1": 8,
+    "profitTargetPhase2": 5,
+    "evaluationPeriod": 30,
+    "dailyCalculationTime": 20
+  },
+  "proposedSettings": {
+    "scalingFactor": 0.65,
+    "maxSinglePosition": 2,
+    "maxTotalExposure": 5,
+    "maxMartingaleLevels": 3,
+    "dailyLossStop": 4.5,
+    "emergencyStop": 8,
+    "positionFormula": "Tiger Lot = Gold Lot × (Tiger Balance / 5000) × 0.65"
+  },
+  "analysis": {
+    "rMultiples": {
+      "oneR": 1000,
+      "maxDailyRisk": 5,
+      "maxTotalRisk": 12,
+      "scaledLargestLoss": -1131.13,
+      "scaledMartingaleSequence": -4710.03,
+      "largestLossInR": -1.1311300000000002,
+      "martingaleSequenceInR": -4.71003,
+      "dailyLossSafetyMargin": 5.799400000000006,
+      "totalDrawdownSafetyMargin": 60.749750000000006
+    },
+    "expectancy": {
+      "winProbability": 0.746,
+      "lossProbability": 0.254,
+      "averageWinScaled": "304.85",
+      "averageLossScaled": "413.14",
+      "expectancyPerTrade": "122.48",
+      "expectancyPercentage": "0.1225",
+      "tradesForPhase1": 66,
+      "tradesForPhase2": 41,
+      "estimatedDaysPhase1": 31,
+      "estimatedDaysPhase2": 19,
+      "withinEvaluationPeriod": false
+    },
+    "positionSizing": {
+      "goldLot": 0.01,
+      "tigerBalance": 100000,
+      "baseFactor": "20.00",
+      "scalingFactor": 0.65,
+      "calculatedLot": "0.13",
+      "finalLot": "0.13",
+      "cappedByLimit": false
+    },
+    "monteCarlo": {
+      "totalSimulations": 10000,
+      "survivalRate": "23.29",
+      "phase1PassRate": "5.26",
+      "bustRate": "76.71",
+      "dailyLimitHitRate": "69.28",
+      "survivors": {
+        "count": 2329,
+        "averageProfit": "649.15",
+        "averageProfitPercentage": "0.65"
+      },
+      "failures": {
+        "count": 7671,
+        "byDailyLimit": 6928,
+        "byTotalDrawdown": 743
+      },
+      "riskMetrics": {
+        "averageMaxDrawdown": "5997.04",
+        "averageMaxDrawdownPercentage": "6.00",
+        "worstDrawdown": "-16891.96",
+        "bestProfit": "21926.31"
+      }
+    },
+    "riskScore": {
+      "score": "26.1",
+      "riskLevel": "EXTREME",
+      "recommendation": "NOT recommended - unacceptable risk level",
+      "factors": [
+        {
+          "factor": "Survival Rate",
+          "value": "24.30%",
+          "penalty": "37.9",
+          "weight": "50%"
+        },
+        {
+          "factor": "Daily Loss Margin",
+          "value": "5.8%",
+          "penalty": "13.3",
+          "weight": "30%"
+        },
+        {
+          "factor": "Martingale Usage",
+          "value": "51.8%",
+          "penalty": "10.4",
+          "weight": "20%"
+        },
+        {
+          "factor": "Phase 1 Success Rate",
+          "value": "7.60%",
+          "penalty": "12.5",
+          "weight": "20%"
+        }
+      ]
+    }
+  },
+  "stressTests": [
+    {
+      "name": "Worst Historical Day Repeated",
+      "scenario": "The largest martingale sequence loss happens",
+      "loss": -4710.03,
+      "percentLoss": "4.71",
+      "breachesDailyLimit": false,
+      "survives": true
+    },
+    {
+      "name": "Multiple Martingale Failures",
+      "scenario": "3 martingale sequences fail in one day",
+      "loss": -7065.045000000001,
+      "percentLoss": "7.07",
+      "breachesDailyLimit": true,
+      "survives": false
+    },
+    {
+      "name": "10 Consecutive Losses",
+      "scenario": "10 trades lose in a row at average loss",
+      "loss": 4131.400000000001,
+      "percentLoss": "4.13",
+      "breachesDailyLimit": false,
+      "survives": true
+    },
+    {
+      "name": "Maximum Positions All Lose",
+      "scenario": "All max concurrent positions (23) close at loss",
+      "loss": 9502.220000000001,
+      "percentLoss": "9.50",
+      "breachesDailyLimit": true,
+      "survives": false
+    },
+    {
+      "name": "Black Swan Event",
+      "scenario": "Market gaps 200 pips against all positions",
+      "estimatedLoss": 10000,
+      "percentLoss": "10.00",
+      "breachesDailyLimit": true,
+      "survives": true
+    }
+  ],
+  "recommendations": [
+    {
+      "category": "Position Sizing",
+      "recommendation": "Consider reducing scaling factor to 0.5 or lower",
+      "reason": "Current scaling factor of 0.65 may be too aggressive for martingale strategies",
+      "priority": "HIGH"
+    },
+    {
+      "category": "Position Sizing",
+      "recommendation": "Implement dynamic position sizing based on daily P&L",
+      "reason": "Reduce position size by 50% after any loss exceeding 2% of balance",
+      "priority": "MEDIUM"
+    },
+    {
+      "category": "Martingale Control",
+      "recommendation": "Limit martingale to 3 levels maximum",
+      "reason": "Each additional level exponentially increases risk",
+      "priority": "HIGH"
+    },
+    {
+      "category": "Martingale Control",
+      "recommendation": "Skip martingale sequences near daily calculation time (7-9 PM EST)",
+      "reason": "Avoid having open martingale sequences during daily loss calculation",
+      "priority": "HIGH"
+    },
+    {
+      "category": "Risk Limits",
+      "recommendation": "Set hard stop at 4.5% daily loss",
+      "reason": "Provides 0.5% buffer before Tiger's 5% daily limit",
+      "priority": "CRITICAL"
+    },
+    {
+      "category": "Risk Limits",
+      "recommendation": "Implement time-based stops for martingale sequences",
+      "reason": "Close all martingale positions if not recovered within 4 hours",
+      "priority": "MEDIUM"
+    },
+    {
+      "category": "Monitoring",
+      "recommendation": "Set up real-time drawdown alerts at 2%, 3%, and 4% levels",
+      "reason": "Early warning system to prevent limit breaches",
+      "priority": "HIGH"
+    },
+    {
+      "category": "Monitoring",
+      "recommendation": "Track correlation between Gold positions and market volatility",
+      "reason": "Gold martingale strategies perform poorly in high volatility",
+      "priority": "MEDIUM"
+    }
+  ],
+  "warnings": [
+    {
+      "category": "Timeline Risk",
+      "warning": "Phase 1 may take 31 days, close to 30-day limit",
+      "impact": "Risk of failing evaluation due to time constraints",
+      "severity": "MEDIUM"
+    },
+    {
+      "category": "Daily Loss Risk",
+      "warning": "Only 5.8% safety margin for daily loss",
+      "impact": "High risk of breaching 5% daily loss limit",
+      "severity": "HIGH"
+    },
+    {
+      "category": "Martingale Risk",
+      "warning": "52% of source trades use martingale - high risk strategy",
+      "impact": "Single bad sequence could blow the account",
+      "severity": "HIGH"
+    },
+    {
+      "category": "Scalability Risk",
+      "warning": "Strategy uses up to 23 concurrent positions",
+      "impact": "May hit broker position limits or margin requirements",
+      "severity": "MEDIUM"
+    }
+  ],
+  "verdict": {
+    "decision": "DO NOT PROCEED",
+    "confidence": "HIGH",
+    "rationale": "23.29% survival rate is too low. Strategy has unacceptable risk for Tiger Funded."
+  }
+}
