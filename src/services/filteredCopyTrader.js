@@ -6,6 +6,7 @@
 import poolClient from './poolClient.js';
 import { logger } from '../utils/logger.js';
 import { tradeTracker } from '../utils/tradeTracker.js';
+import telegram from '../utils/telegram.js';
 
 class FilteredCopyTrader {
   constructor(sourceAccountId, destAccountId, destRegion = 'new-york') {
@@ -101,6 +102,9 @@ class FilteredCopyTrader {
           newTrades.push(position);
           logger.info(`🎯 New trade detected: ${position.symbol} ${position.volume} lots @ ${position.openPrice}`);
           tradeTracker.detected(position);
+
+          // Send Telegram notification
+          telegram.notifyPositionDetected(position, this.sourceAccountId);
         }
       }
       
@@ -147,14 +151,6 @@ class FilteredCopyTrader {
       const newTrades = await this.detectNewTrades();
       
       for (const trade of newTrades) {
-        // Pre-check position size to skip large martingale
-        if (trade.volume > 0.03) {
-          logger.info(`⚠️ Skipping large position: ${trade.volume} lots`);
-          tradeTracker.rejected(trade, ['source volume too large']);
-          this.processedTrades.add(trade.id);
-          continue;
-        }
-        
         await this.executeCopyTrade(trade);
       }
       
@@ -229,10 +225,12 @@ class FilteredCopyTrader {
     // Log decision
     if (reasons.length > 0) {
       logger.info(`❌ Skipping trade: ${reasons.join(', ')}`);
+      // Send Telegram notification about filter rejection
+      telegram.notifyFilterRejection(trade, reasons);
     } else {
       logger.info(`✅ Trade passed all filters`);
     }
-    
+
     return reasons.length === 0;
   }
 
@@ -337,6 +335,7 @@ class FilteredCopyTrader {
       if (alreadyCopied) {
         this.processedTrades.add(sourceTrade.id);
         tradeTracker.duplicate(sourceTrade);
+        telegram.notifyCopyFailure(sourceTrade, 'Already copied', 'Position already exists in destination account');
         return { success: false, reason: 'Already copied' };
       }
       
@@ -345,6 +344,7 @@ class FilteredCopyTrader {
       if (destVolume === 0) {
         this.processedTrades.add(sourceTrade.id);
         tradeTracker.rejected(sourceTrade, ['invalid position size']);
+        telegram.notifyCopyFailure(sourceTrade, 'Invalid position size', 'Calculated volume is 0');
         return { success: false, reason: 'Invalid position size' };
       }
       
@@ -377,6 +377,12 @@ class FilteredCopyTrader {
         tradeTracker.copied(sourceTrade, destVolume, result.orderId);
         this.lastTradeTime = Date.now();
         this.dailyStats.trades++;
+
+        // Send Telegram success notification
+        telegram.notifyCopySuccess(sourceTrade, this.destAccountId, {
+          orderId: result.orderId,
+          volume: destVolume
+        });
         
         // Mark this trade as processed
         this.processedTrades.add(sourceTrade.id);
@@ -400,6 +406,10 @@ class FilteredCopyTrader {
       } else {
         logger.error(`❌ Failed to copy trade: ${result.error}`);
         tradeTracker.error(sourceTrade, result.error);
+
+        // Send Telegram failure notification
+        telegram.notifyCopyFailure(sourceTrade, 'Execution failed', result.error);
+
         return { success: false, error: result.error };
       }
       
