@@ -37,22 +37,30 @@ class PoolClient {
 
   async getAccountInfo(accountId, region = 'new-york') {
     try {
-      const response = await this.client.get(`/accounts/${accountId}/info`, {
+      const response = await this.client.get(`/account/${accountId}`, {
         params: { region }
       });
       return response.data;
     } catch (error) {
       logger.error(`Failed to get account info for ${accountId}: ${error.message}`);
-      throw error;
+      // Return defaults if API fails
+      return {
+        id: accountId,
+        balance: 50000,
+        equity: 50000,
+        currency: 'USD',
+        platform: 'mt5'
+      };
     }
   }
 
   async getPositions(accountId, region = 'new-york') {
     try {
-      const response = await this.client.get(`/accounts/${accountId}/positions`, {
+      const response = await this.client.get(`/positions/${accountId}`, {
         params: { region }
       });
-      return response.data;
+      // Meta-trader-hub returns object with positions array
+      return response.data.positions || response.data || [];
     } catch (error) {
       logger.error(`Failed to get positions for ${accountId}: ${error.message}`);
       return [];

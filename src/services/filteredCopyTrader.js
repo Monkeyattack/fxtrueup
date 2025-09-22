@@ -5,6 +5,7 @@
 
 import poolClient from './poolClient.js';
 import { logger } from '../utils/logger.js';
+import { tradeTracker } from '../utils/tradeTracker.js';
 
 class FilteredCopyTrader {
   constructor(sourceAccountId, destAccountId, destRegion = 'new-york') {
@@ -13,24 +14,35 @@ class FilteredCopyTrader {
     this.destRegion = destRegion;
     
     // Tracking state
-    this.openPositions = new Map();
+    this.sourcePositions = new Map(); // Track source positions
+    this.processedTrades = new Set(); // Track which trades we've processed
+    this.activeMartingaleCycles = new Map(); // Track martingale sequences
     this.lastTradeTime = 0;
     this.dailyStats = {
       date: new Date().toDateString(),
       trades: 0,
-      profit: 0
+      profit: 0,
+      dailyLoss: 0
     };
     
     // Filter configuration
     this.config = {
       maxOpenPositions: 1,
       minTimeBetweenTrades: 30 * 60 * 1000, // 30 minutes
-      fixedLotSize: 2.50, // Scaled for $118k account to risk ~1% per trade with 40-50 pip stops
+      fixedLotSize: 2.50, // Will be replaced by degressive scaling
       maxDailyTrades: 5,
       priceRangeFilter: 50, // pips
       allowedHours: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17], // UTC
       stopLossBuffer: 20, // pips
-      takeProfitBuffer: 30 // pips
+      takeProfitBuffer: 30, // pips
+      dailyLossLimit: 3540, // 3% of $118k
+      maxConcurrentCycles: 2, // Max martingale cycles
+      // Degressive scaling for martingale
+      martingaleScaling: {
+        0.01: { multiplier: 8, maxLots: 0.08 },
+        0.02: { multiplier: 6, maxLots: 0.12 },
+        0.03: { multiplier: 4, maxLots: 0.12 }
+      }
     };
   }
 
@@ -38,12 +50,19 @@ class FilteredCopyTrader {
    * Start monitoring and copying trades
    */
   async start() {
-    logger.info('🚀 Starting Filtered Copy Trader');
+    logger.info('🚀 Starting Filtered Copy Trader with Degressive Scaling');
     logger.info(`Source: ${this.sourceAccountId}`);
     logger.info(`Destination: ${this.destAccountId}`);
+    logger.info(`Daily Loss Limit: $${this.config.dailyLossLimit}`);
     
-    // Initial sync - get current positions
-    await this.syncPositions();
+    // Initial sync of source positions only
+    const initialPositions = await poolClient.getPositions(this.sourceAccountId, 'london');
+    initialPositions.forEach(pos => {
+      this.sourcePositions.set(pos.id, pos);
+      // Mark existing positions as already processed to avoid copying old trades
+      this.processedTrades.add(pos.id);
+    });
+    logger.info(`📊 Initial source positions: ${initialPositions.length}`);
     
     // Start monitoring loop
     this.monitorInterval = setInterval(() => {
@@ -64,22 +83,45 @@ class FilteredCopyTrader {
   }
 
   /**
-   * Sync current positions
+   * Detect new trades from source account
    */
-  async syncPositions() {
+  async detectNewTrades() {
     try {
-      const sourcePositions = await poolClient.getPositions(this.sourceAccountId, 'london');
-      const destPositions = await poolClient.getPositions(this.destAccountId, this.destRegion);
+      const currentPositions = await poolClient.getPositions(this.sourceAccountId, 'london');
+      const newTrades = [];
       
-      // Update tracking
-      this.openPositions.clear();
-      destPositions.forEach(pos => {
-        this.openPositions.set(pos.id, pos);
+      // Build a set of current position IDs
+      const currentIds = new Set();
+      
+      for (const position of currentPositions) {
+        currentIds.add(position.id);
+        
+        // Check if this is a new position
+        if (!this.sourcePositions.has(position.id)) {
+          newTrades.push(position);
+          logger.info(`🎯 New trade detected: ${position.symbol} ${position.volume} lots @ ${position.openPrice}`);
+          tradeTracker.detected(position);
+        }
+      }
+      
+      // Update our tracked source positions
+      this.sourcePositions.clear();
+      currentPositions.forEach(pos => {
+        this.sourcePositions.set(pos.id, pos);
       });
       
-      logger.info(`Current positions - Source: ${sourcePositions.length}, Dest: ${destPositions.length}`);
+      // Clean up processed trades for positions that no longer exist
+      for (const tradeId of this.processedTrades) {
+        if (!currentIds.has(tradeId)) {
+          this.processedTrades.delete(tradeId);
+        }
+      }
+      
+      return newTrades;
     } catch (error) {
-      logger.error('Error syncing positions:', error);
+      logger.error('Error detecting new trades:', error);
+      tradeTracker.error({ id: 'detect', symbol: 'n/a' }, error.message);
+      return [];
     }
   }
 
@@ -91,21 +133,34 @@ class FilteredCopyTrader {
       // Reset daily stats if new day
       const today = new Date().toDateString();
       if (this.dailyStats.date !== today) {
-        this.dailyStats = { date: today, trades: 0, profit: 0 };
+        this.dailyStats = { date: today, trades: 0, profit: 0, dailyLoss: 0 };
+        this.processedTrades.clear(); // Reset processed trades for new day
       }
       
-      // Get current positions from source
-      const sourcePositions = await poolClient.getPositions(this.sourceAccountId, 'london');
+      // Check if we've hit daily loss limit
+      if (this.dailyStats.dailyLoss >= this.config.dailyLossLimit) {
+        logger.warn(`⚠️ Daily loss limit reached: $${this.dailyStats.dailyLoss}`);;
+        return;
+      }
       
-      // Check each position to see if it should be copied
-      for (const position of sourcePositions) {
-        if (await this.shouldCopyTrade(position)) {
-          await this.executeCopyTrade(position);
+      // Only process NEW trades, not all positions
+      const newTrades = await this.detectNewTrades();
+      
+      for (const trade of newTrades) {
+        // Pre-check position size to skip large martingale
+        if (trade.volume > 0.03) {
+          logger.info(`⚠️ Skipping large position: ${trade.volume} lots`);
+          tradeTracker.rejected(trade, ['source volume too large']);
+          this.processedTrades.add(trade.id);
+          continue;
         }
+        
+        await this.executeCopyTrade(trade);
       }
       
     } catch (error) {
       logger.error('Error checking for trades:', error);
+      tradeTracker.error({ id: 'check', symbol: 'n/a' }, error.message);
     }
   }
 
@@ -115,15 +170,22 @@ class FilteredCopyTrader {
   async shouldCopyTrade(trade) {
     const reasons = [];
     
-    // 1. Check if already copied
-    const alreadyCopied = Array.from(this.openPositions.values()).some(
-      pos => pos.comment && pos.comment.includes(trade.id)
-    );
-    if (alreadyCopied) return false;
+    // 1. Check if we've already processed this trade
+    if (this.processedTrades.has(trade.id)) {
+      return false; // Silent skip - already processed
+    }
     
-    // 2. Check position limit
-    if (this.openPositions.size >= this.config.maxOpenPositions) {
-      reasons.push('Max positions reached');
+    // 2. Check daily loss limit
+    if (this.dailyStats.dailyLoss >= this.config.dailyLossLimit * 0.8) {
+      reasons.push('Approaching daily loss limit');
+      tradeTracker.rejected(trade, reasons);
+      return false;
+    }
+    
+    // 3. Check concurrent martingale cycles
+    if (this.activeMartingaleCycles.size >= this.config.maxConcurrentCycles) {
+      reasons.push('Max martingale cycles reached');
+      tradeTracker.rejected(trade, reasons);
       return false;
     }
     
@@ -131,12 +193,14 @@ class FilteredCopyTrader {
     const timeSinceLastTrade = Date.now() - this.lastTradeTime;
     if (timeSinceLastTrade < this.config.minTimeBetweenTrades) {
       reasons.push('Too soon after last trade');
+      tradeTracker.rejected(trade, reasons);
       return false;
     }
     
     // 4. Check daily trade limit
     if (this.dailyStats.trades >= this.config.maxDailyTrades) {
       reasons.push('Daily trade limit reached');
+      tradeTracker.rejected(trade, reasons);
       return false;
     }
     
@@ -144,18 +208,21 @@ class FilteredCopyTrader {
     const hour = new Date().getUTCHours();
     if (!this.config.allowedHours.includes(hour)) {
       reasons.push('Outside trading hours');
+      tradeTracker.rejected(trade, reasons);
       return false;
     }
     
     // 6. Detect martingale pattern
     if (this.isMartingalePattern(trade)) {
       reasons.push('Martingale pattern detected');
+      tradeTracker.rejected(trade, reasons);
       return false;
     }
     
     // 7. Check for grid pattern (multiple positions at similar prices)
     if (await this.isGridPattern(trade)) {
       reasons.push('Grid pattern detected');
+      tradeTracker.rejected(trade, reasons);
       return false;
     }
     
@@ -212,20 +279,90 @@ class FilteredCopyTrader {
   }
 
   /**
+   * Calculate position size with degressive scaling
+   */
+  calculatePositionSize(sourceLots) {
+    const scaling = this.config.martingaleScaling[sourceLots];
+    if (!scaling) {
+      logger.warn(`No scaling for ${sourceLots} lots - skipping`);
+      return 0;
+    }
+    
+    // Apply daily loss adjustment
+    const lossAdjustment = this.dailyStats.dailyLoss > 1500 ? 0.7 : 1.0;
+    return scaling.maxLots * lossAdjustment;
+  }
+  
+  /**
+   * Detect martingale level
+   */
+  detectMartingaleLevel(trade) {
+    // Check if part of existing cycle
+    for (const [cycleId, positions] of this.activeMartingaleCycles) {
+      const firstPosition = positions[0];
+      
+      // Same direction and within 50 pips
+      if (trade.type === firstPosition.type &&
+          Math.abs(trade.openPrice - firstPosition.openPrice) < 0.50) {
+        return positions.length + 1; // Next level in cycle
+      }
+    }
+    
+    // New cycle if base size
+    if (trade.volume === 0.01) {
+      return 1;
+    }
+    
+    // Standalone larger position (skip)
+    return -1;
+  }
+  
+  /**
    * Execute the copy trade
    */
   async executeCopyTrade(sourceTrade) {
     try {
+      // Check if we should copy this trade
+      if (!await this.shouldCopyTrade(sourceTrade)) {
+        return { success: false, reason: 'Failed validation' };
+      }
+      
+      // NOW check destination (only when needed)
+      const destPositions = await poolClient.getPositions(this.destAccountId, this.destRegion);
+      
+      // Check if already copied
+      const alreadyCopied = destPositions.some(
+        pos => pos.comment && pos.comment.includes(sourceTrade.id)
+      );
+      if (alreadyCopied) {
+        this.processedTrades.add(sourceTrade.id);
+        tradeTracker.duplicate(sourceTrade);
+        return { success: false, reason: 'Already copied' };
+      }
+      
+      // Calculate position size with degressive scaling
+      const destVolume = this.calculatePositionSize(sourceTrade.volume);
+      if (destVolume === 0) {
+        this.processedTrades.add(sourceTrade.id);
+        tradeTracker.rejected(sourceTrade, ['invalid position size']);
+        return { success: false, reason: 'Invalid position size' };
+      }
+      
+      // Detect martingale level
+      const martingaleLevel = this.detectMartingaleLevel(sourceTrade);
+      
       logger.info(`📋 Copying trade: ${sourceTrade.symbol} ${sourceTrade.type}`);
+      logger.info(`  Source: ${sourceTrade.volume} lots → Dest: ${destVolume} lots (L${martingaleLevel})`);
+      tradeTracker.sized(sourceTrade, destVolume, martingaleLevel);
       
       // Prepare trade data
       const tradeData = {
         symbol: sourceTrade.symbol,
-        actionType: sourceTrade.type === 'POSITION_TYPE_BUY' ? 'ORDER_TYPE_BUY' : 'ORDER_TYPE_SELL',
-        volume: this.config.fixedLotSize, // Fixed 0.10 lots for $60k account
+        action: sourceTrade.type === 'POSITION_TYPE_BUY' ? 'BUY' : 'SELL',
+        volume: destVolume,
         stopLoss: this.calculateStopLoss(sourceTrade),
         takeProfit: this.calculateTakeProfit(sourceTrade),
-        comment: `Copy_${sourceTrade.id}`
+        comment: `Copy_${sourceTrade.id}_L${sourceTrade.volume * 100}`
       };
       
       // Execute trade
@@ -237,17 +374,38 @@ class FilteredCopyTrader {
       
       if (result.success) {
         logger.info(`✅ Trade copied successfully: ${result.orderId}`);
+        tradeTracker.copied(sourceTrade, destVolume, result.orderId);
         this.lastTradeTime = Date.now();
         this.dailyStats.trades++;
         
-        // Update position tracking
-        await this.syncPositions();
+        // Mark this trade as processed
+        this.processedTrades.add(sourceTrade.id);
+        
+        // Track martingale cycle
+        if (martingaleLevel === 1) {
+          // Start new cycle
+          const cycleId = `${sourceTrade.symbol}_${Date.now()}`;
+          this.activeMartingaleCycles.set(cycleId, [sourceTrade]);
+        } else if (martingaleLevel > 1) {
+          // Add to existing cycle
+          for (const [cycleId, positions] of this.activeMartingaleCycles) {
+            if (positions[0].symbol === sourceTrade.symbol) {
+              positions.push(sourceTrade);
+              break;
+            }
+          }
+        }
+        
+        return { success: true, orderId: result.orderId };
       } else {
         logger.error(`❌ Failed to copy trade: ${result.error}`);
+        tradeTracker.error(sourceTrade, result.error);
+        return { success: false, error: result.error };
       }
       
     } catch (error) {
       logger.error('Error executing copy trade:', error);
+      tradeTracker.error(sourceTrade, error.message);
     }
   }
 
@@ -255,15 +413,26 @@ class FilteredCopyTrader {
    * Calculate stop loss with buffer
    */
   calculateStopLoss(trade) {
-    if (!trade.stopLoss) return null;
-    
-    const buffer = this.config.stopLossBuffer;
     const pipSize = trade.symbol.includes('JPY') ? 0.01 : 0.0001;
-    
+    const buffer = this.config.stopLossBuffer;
+
+    // If trade has SL, use it with buffer
+    if (trade.stopLoss) {
+      if (trade.type === 'POSITION_TYPE_BUY') {
+        return trade.stopLoss - (buffer * pipSize);
+      } else {
+        return trade.stopLoss + (buffer * pipSize);
+      }
+    }
+
+    // Otherwise, use default SL based on symbol
+    const defaultSL = trade.symbol === 'XAUUSD' ? 50 : 40; // pips
+    const slDistance = defaultSL * pipSize;
+
     if (trade.type === 'POSITION_TYPE_BUY') {
-      return trade.stopLoss - (buffer * pipSize);
+      return trade.openPrice - slDistance;
     } else {
-      return trade.stopLoss + (buffer * pipSize);
+      return trade.openPrice + slDistance;
     }
   }
 
@@ -271,15 +440,26 @@ class FilteredCopyTrader {
    * Calculate take profit with buffer
    */
   calculateTakeProfit(trade) {
-    if (!trade.takeProfit) return null;
-    
-    const buffer = this.config.takeProfitBuffer;
     const pipSize = trade.symbol.includes('JPY') ? 0.01 : 0.0001;
-    
+    const buffer = this.config.takeProfitBuffer;
+
+    // If trade has TP, use it with buffer
+    if (trade.takeProfit) {
+      if (trade.type === 'POSITION_TYPE_BUY') {
+        return trade.takeProfit + (buffer * pipSize);
+      } else {
+        return trade.takeProfit - (buffer * pipSize);
+      }
+    }
+
+    // Otherwise, use default TP based on symbol (2:1 risk/reward)
+    const defaultTP = trade.symbol === 'XAUUSD' ? 100 : 80; // pips
+    const tpDistance = defaultTP * pipSize;
+
     if (trade.type === 'POSITION_TYPE_BUY') {
-      return trade.takeProfit + (buffer * pipSize);
+      return trade.openPrice + tpDistance;
     } else {
-      return trade.takeProfit - (buffer * pipSize);
+      return trade.openPrice - tpDistance;
     }
   }
 
@@ -288,8 +468,11 @@ class FilteredCopyTrader {
    */
   getStats() {
     return {
-      openPositions: this.openPositions.size,
+      sourcePositions: this.sourcePositions.size,
+      processedTrades: this.processedTrades.size,
       dailyTrades: this.dailyStats.trades,
+      dailyLoss: this.dailyStats.dailyLoss,
+      activeCycles: this.activeMartingaleCycles.size,
       lastTradeTime: this.lastTradeTime,
       isRunning: !!this.monitorInterval
     };

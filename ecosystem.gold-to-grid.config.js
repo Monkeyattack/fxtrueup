@@ -9,7 +9,7 @@ module.exports = {
       "max_memory_restart": "500M",
       "env": {
         "NODE_ENV": "production",
-        "POOL_API_URL": "http://localhost:8086"
+        "POOL_API_URL": "http://localhost:8087"
       },
       "error_file": "./logs/gold-to-grid-error.log",
       "out_file": "./logs/gold-to-grid-out.log",

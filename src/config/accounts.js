@@ -11,6 +11,15 @@ export const ACCOUNT_CONFIGS = {
     description: 'High-performance gold trading strategy with 74.6% win rate'
   },
   
+  // PropFirmKidEA - New MT5 source account (London)
+  PROP_FIRMKID_EA: {
+    id: '1becc873-1ac2-4dbd-b98d-0d81f1e13a4b',
+    name: 'PropFirmKidEA',
+    region: 'london',
+    type: 'source',
+    description: 'MT5 source account (PlexyTrade-Server01)'
+  },
+  
   // Grid Demo - Target account for filtered copy trading
   GRID_DEMO: {
     id: '019ec0f0-09f5-4230-a7bd-fa2930af07a4',
@@ -42,6 +51,7 @@ export const ACCOUNT_CONFIGS = {
 // Export individual account IDs for convenience
 export const GOLD_ACCOUNT_ID = ACCOUNT_CONFIGS.GOLD_BUY_ONLY.id;
 export const GRID_ACCOUNT_ID = ACCOUNT_CONFIGS.GRID_DEMO.id;
+export const PROP_FIRMKID_EA_ID = ACCOUNT_CONFIGS.PROP_FIRMKID_EA.id;
 
 // Get all account IDs
 export function getAllAccountIds() {

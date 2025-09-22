@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Copy Trader Status</title>
+    <style>
+      :root { --bg:#0c1117; --panel:#161b22; --text:#e6edf3; --muted:#a3b1c2; --ok:#2ecc71; --warn:#f1c40f; --err:#e74c3c; }
+      body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background:var(--bg); color:var(--text); }
+      header { padding:16px 20px; border-bottom:1px solid #222; display:flex; align-items:center; justify-content:space-between; }
+      .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:16px; padding:20px; }
+      .card { background:var(--panel); border:1px solid #222; border-radius:8px; padding:16px; }
+      h1 { font-size:18px; margin:0; }
+      h2 { font-size:16px; margin:0 0 8px; }
+      table { width:100%; border-collapse: collapse; font-size: 13px; }
+      th, td { padding:6px 8px; border-bottom:1px solid #2a2f36; text-align:left; }
+      .muted { color:var(--muted); }
+      .ok { color:var(--ok); }
+      .warn { color:var(--warn); }
+      .err { color:var(--err); }
+      code { background:#0f141a; padding:2px 4px; border-radius:4px; }
+      .kv { display:grid; grid-template-columns: 180px 1fr; gap:6px 8px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Copy Trader Status</h1>
+      <div class="muted" id="last-updated">—</div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>App</h2>
+        <div class="kv" id="app-kv"></div>
+      </section>
+
+      <section class="card">
+        <h2>Source Account</h2>
+        <div class="kv" id="source-kv"></div>
+      </section>
+
+      <section class="card">
+        <h2>Destination Account</h2>
+        <div class="kv" id="dest-kv"></div>
+      </section>
+
+      <section class="card">
+        <h2>Analysis</h2>
+        <div class="kv" id="analysis-kv"></div>
+      </section>
+
+      <section class="card" style="grid-column: 1/-1;">
+        <h2>Open Trades (Source)</h2>
+        <div style="overflow:auto;">
+          <table id="source-trades"><thead><tr>
+            <th>Symbol</th><th>Type</th><th>Lots</th><th>Open Price</th><th>SL</th><th>TP</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+
+      <section class="card" style="grid-column: 1/-1;">
+        <h2>Open Trades (Destination)</h2>
+        <div style="overflow:auto;">
+          <table id="dest-trades"><thead><tr>
+            <th>Symbol</th><th>Type</th><th>Lots</th><th>Open Price</th><th>SL</th><th>TP</th><th>Comment</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+
+      <section class="card" style="grid-column: 1/-1;">
+        <h2>Recent Events</h2>
+        <div style="overflow:auto;">
+          <table id="events"><thead><tr>
+            <th>Time (UTC)</th><th>Event</th><th>Symbol</th><th>Src Lots</th><th>Dest Lots</th><th>Reason/Order</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      async function fetchStatus() {
+        const res = await fetch('/api/copy-trader/status');
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+      }
+
+      function setKV(el, obj) {
+        el.innerHTML = Object.entries(obj).map(([k,v]) => `
+          <div class="muted">${k}</div><div>${v ?? '—'}</div>
+        `).join('');
+      }
+
+      function fillTrades(el, trades) {
+        const tbody = el.querySelector('tbody');
+        tbody.innerHTML = (trades || []).map(t => `
+          <tr>
+            <td>${t.symbol || ''}</td>
+            <td>${t.type || ''}</td>
+            <td>${t.volume ?? ''}</td>
+            <td>${t.openPrice ?? ''}</td>
+            <td>${t.stopLoss ?? ''}</td>
+            <td>${t.takeProfit ?? ''}</td>
+            <td>${t.comment || ''}</td>
+          </tr>
+        `).join('');
+      }
+
+      function fillEvents(el, events) {
+        const tbody = el.querySelector('tbody');
+        tbody.innerHTML = (events || []).map(e => `
+          <tr>
+            <td>${new Date(e.ts).toISOString().replace('T',' ').slice(0,19)}</td>
+            <td><code>${e.event}</code></td>
+            <td>${e.symbol || ''}</td>
+            <td>${e.source_volume ?? ''}</td>
+            <td>${e.dest_volume ?? ''}</td>
+            <td>${e.order_id || (e.reasons ? e.reasons.join(', ') : '') || ''}</td>
+          </tr>
+        `).join('');
+      }
+
+      async function refresh() {
+        try {
+          const data = await fetchStatus();
+          document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+
+          setKV(document.getElementById('app-kv'), {
+            status: data.app.status,
+            last_event_at: data.app.last_event_at || '—',
+            daily_copied: data.app.event_counters?.dailyCopied ?? 0,
+            copied_total: data.app.event_counters?.copied ?? 0,
+            rejected_total: data.app.event_counters?.rejected ?? 0,
+            errors: data.app.event_counters?.error ?? 0,
+            port: data.app.port
+          });
+
+          setKV(document.getElementById('source-kv'), {
+            account_id: data.source.account_id,
+            balance: data.source.balance,
+            equity: data.source.equity,
+            margin: data.source.margin,
+            currency: data.source.currency,
+            open_positions: data.source.open_trades?.length || 0
+          });
+
+          setKV(document.getElementById('dest-kv'), {
+            account_id: data.destination.account_id,
+            region: data.destination.region,
+            balance: data.destination.balance,
+            equity: data.destination.equity,
+            margin: data.destination.margin,
+            currency: data.destination.currency,
+            open_positions: data.destination.open_trades?.length || 0
+          });
+
+          setKV(document.getElementById('analysis-kv'), {
+            loss_streak: data.analysis.loss_streak,
+            martingale: data.analysis.martingale.enteredMartingale ? 'yes' : 'no',
+            opposite_direction_symbols: data.analysis.opposite_direction_symbols
+          });
+
+          fillTrades(document.getElementById('source-trades'), data.source.open_trades);
+          fillTrades(document.getElementById('dest-trades'), data.destination.open_trades);
+          fillEvents(document.getElementById('events'), data.recent_events);
+        } catch (err) {
+          console.error(err);
+          document.getElementById('last-updated').textContent = 'Error loading';
+        }
+      }
+
+      refresh();
+      setInterval(refresh, 5000);
+    </script>
+  </body>
+  </html>
+

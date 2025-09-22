@@ -60,11 +60,18 @@
       "Read(/home/claude-dev/repos/meta-trader-hub/backend/**)",
       "Read(/home/claude-dev/repos/meta-trader-hub/backend/services/metaapi/**)",
       "WebFetch(domain:tigerfunded.com)",
-      "WebFetch(domain:app.theneo.io)"
+      "WebFetch(domain:app.theneo.io)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/docs/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/docs/**)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/docs/**)",
+      "Bash(pm2 info:*)",
+      "Read(/home/claude-dev/repos/meta-trader-hub/docs/**)"
     ],
     "deny": [],
     "additionalDirectories": [
-      "/home/claude-dev/repos/meta-trader-hub/"
+      "/home/claude-dev/repos/meta-trader-hub/",
+      "/home/claude-dev/repos/meta-trader-hub/docs/"
     ]
   }
 }

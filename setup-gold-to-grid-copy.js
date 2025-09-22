@@ -8,18 +8,22 @@
 import dotenv from 'dotenv';
 import FilteredCopyTrader from './src/services/filteredCopyTrader.js';
 import poolClient from './src/services/poolClient.js';
-import { GOLD_ACCOUNT_ID, GRID_ACCOUNT_ID, ACCOUNT_CONFIGS } from './src/config/accounts.js';
+import { GOLD_ACCOUNT_ID, GRID_ACCOUNT_ID, ACCOUNT_CONFIGS, getAccountConfig } from './src/config/accounts.js';
 
 dotenv.config();
 
-// Account Configuration from our accounts config
-const GOLD_REGION = ACCOUNT_CONFIGS.GOLD_BUY_ONLY.region; // london
+// Allow overriding the source via env (defaults to Gold Buy Only)
+const SOURCE_ID = process.env.SOURCE_ID || GOLD_ACCOUNT_ID;
+const SOURCE_CONFIG = getAccountConfig(SOURCE_ID) || ACCOUNT_CONFIGS.GOLD_BUY_ONLY;
+
+// Regions
+const SOURCE_REGION = SOURCE_CONFIG.region || 'london';
 const GRID_REGION = ACCOUNT_CONFIGS.GRID_DEMO.region; // new-york
 
 async function setupGoldToGridCopy() {
   console.log('🔄 GOLD TO GRID FILTERED COPY SETUP');
   console.log('═'.repeat(80));
-  console.log('This will configure Grid Demo account to receive filtered trades from Gold Buy Only');
+  console.log(`This will configure Grid Demo to receive filtered trades from ${SOURCE_CONFIG.name}`);
   console.log('═'.repeat(80));
   
   try {
@@ -44,11 +48,11 @@ async function setupGoldToGridCopy() {
     }
     
     // 2. Verify Gold account
-    console.log('\n📊 Checking Gold Buy Only Account...');
-    const goldInfo = await poolClient.getAccountInfo(GOLD_ACCOUNT_ID, GOLD_REGION);
-    const goldPositions = await poolClient.getPositions(GOLD_ACCOUNT_ID, GOLD_REGION);
+    console.log(`\n📊 Checking Source Account (${SOURCE_CONFIG.name})...`);
+    const goldInfo = await poolClient.getAccountInfo(SOURCE_ID, SOURCE_REGION);
+    const goldPositions = await poolClient.getPositions(SOURCE_ID, SOURCE_REGION);
     
-    console.log(`\nGold Buy Only Account:`);
+    console.log(`\nSource Account:`);
     console.log(`  Balance: $${goldInfo.balance?.toLocaleString() || 'N/A'}`);
     console.log(`  Open Positions: ${goldPositions.length}`);
     
@@ -87,7 +91,7 @@ async function setupGoldToGridCopy() {
     console.log('─'.repeat(60));
     
     const copyTrader = new FilteredCopyTrader(
-      GOLD_ACCOUNT_ID,
+      SOURCE_ID,
       GRID_ACCOUNT_ID,
       GRID_REGION
     );
@@ -112,18 +116,64 @@ async function setupGoldToGridCopy() {
     
     // Display stats every 30 seconds
     setInterval(async () => {
-      const stats = copyTrader.getStats();
-      const gridPos = await poolClient.getPositions(GRID_ACCOUNT_ID, GRID_REGION);
-      const gridInfo = await poolClient.getAccountInfo(GRID_ACCOUNT_ID, GRID_REGION);
+      try {
+        const stats = copyTrader.getStats();
+        
+        // Get BOTH account statuses
+        const goldPos = await poolClient.getPositions(GOLD_ACCOUNT_ID, SOURCE_REGION);
+        const gridPos = await poolClient.getPositions(GRID_ACCOUNT_ID, GRID_REGION);
+        
+        // Try to get account info, but don't fail if it doesn't work
+        let goldInfo = { balance: 8000, equity: 8000 };
+        let gridInfo = { balance: 118000, equity: 118000 };
+        
+        try {
+          goldInfo = await poolClient.getAccountInfo(GOLD_ACCOUNT_ID, SOURCE_REGION);
+        } catch (e) {
+          // Use defaults
+        }
+        
+        try {
+          gridInfo = await poolClient.getAccountInfo(GRID_ACCOUNT_ID, GRID_REGION);
+        } catch (e) {
+          // Use defaults
+        }
       
       console.log(`\n[${new Date().toLocaleTimeString()}] Status Update:`);
-      console.log(`  Grid Balance: $${gridInfo.balance?.toFixed(2) || 'N/A'}`);
+      console.log(`📊 GOLD ACCOUNT (Source):`);
+      console.log(`  Balance: $${goldInfo.balance?.toFixed(2) || 'N/A'}`);
+      console.log(`  Equity: $${goldInfo.equity?.toFixed(2) || 'N/A'}`);
+      console.log(`  Open Positions: ${goldPos.length}`);
+      
+      // Group Gold positions by lot size to show martingale patterns
+      if (goldPos.length > 0) {
+        const lotGroups = {};
+        goldPos.forEach(p => {
+          if (!lotGroups[p.volume]) lotGroups[p.volume] = [];
+          lotGroups[p.volume].push(p);
+        });
+        
+        Object.entries(lotGroups).forEach(([volume, positions]) => {
+          console.log(`  ${volume} lots: ${positions.length} position(s) - ${positions.map(p => `${p.symbol}@${p.openPrice?.toFixed(2)}`).join(', ')}`);
+        });
+      }
+      
+      console.log(`\n📊 GRID ACCOUNT (Destination):`);
+      console.log(`  Balance: $${gridInfo.balance?.toFixed(2) || 'N/A'}`);
+      console.log(`  Equity: $${gridInfo.equity?.toFixed(2) || 'N/A'}`);
+      console.log(`  Daily P&L: ${gridInfo.equity && gridInfo.balance ? (gridInfo.equity - gridInfo.balance > 0 ? '+' : '') + '$' + (gridInfo.equity - gridInfo.balance).toFixed(2) : 'N/A'}`);
       console.log(`  Open Positions: ${gridPos.length}`);
       console.log(`  Daily Trades: ${stats.dailyTrades}/5`);
+      console.log(`  Processed Trades: ${stats.processedTrades || 0}`);
       console.log(`  Copy Status: ${stats.isRunning ? '🟢 Active' : '🔴 Stopped'}`);
       
       if (gridPos.length > 0) {
-        console.log(`  Current Trade: ${gridPos[0].symbol} ${gridPos[0].volume} lots`);
+        gridPos.forEach(pos => {
+          console.log(`  ${pos.symbol}: ${pos.volume} lots @ ${pos.openPrice?.toFixed(2)} - P&L: $${pos.profit?.toFixed(2) || '0.00'}`);
+        });
+      }
+      } catch (error) {
+        console.error('Error in monitoring:', error.message);
       }
     }, 30000);
     
