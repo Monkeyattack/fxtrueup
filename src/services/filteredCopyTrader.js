@@ -238,21 +238,20 @@ class FilteredCopyTrader {
    * Detect martingale pattern
    */
   isMartingalePattern(trade) {
-    // Check if position size is larger than our fixed size
-    // Allow up to 50% larger to account for variations
-    if (trade.volume > this.config.fixedLotSize * 1.5) {
+    // Check if position size is larger than expected base size
+    // PropFirmKid typically trades 0.85-1.0 lots as base size
+    // Martingale would be 1.7+ lots (2x base) or higher
+    const baseSize = 1.0; // Expected base lot size for PropFirmKid
+    const martingaleThreshold = baseSize * 1.7; // 170% of base = likely martingale
+
+    if (trade.volume > martingaleThreshold) {
+      logger.info(`⚠️ Martingale pattern detected: ${trade.volume} lots > ${martingaleThreshold} threshold`);
       return true;
     }
-    
-    // Also check absolute size - if it's more than 0.02 on the source account
-    // (which uses 0.01 base), it's likely martingale
-    if (trade.volume > 0.02) {
-      return true;
-    }
-    
+
     // Check recent trade history for losses followed by larger positions
     // This would need trade history analysis
-    
+
     return false;
   }
 
@@ -277,18 +276,26 @@ class FilteredCopyTrader {
   }
 
   /**
-   * Calculate position size with degressive scaling
+   * Calculate position size with proportional scaling
    */
   calculatePositionSize(sourceLots) {
-    const scaling = this.config.martingaleScaling[sourceLots];
-    if (!scaling) {
-      logger.warn(`No scaling for ${sourceLots} lots - skipping`);
-      return 0;
+    // PropFirmKid ($100k) → Grid Demo ($118k) = 1.18x multiplier
+    const accountSizeMultiplier = 1.18;
+
+    // Calculate proportional lot size
+    let destLots = sourceLots * accountSizeMultiplier;
+
+    // Apply daily loss adjustment if needed
+    if (this.dailyStats.dailyLoss > 1500) {
+      destLots *= 0.7; // Reduce by 30% when approaching loss limit
+      logger.info(`📉 Reducing lot size due to daily loss: ${this.dailyStats.dailyLoss}`);
     }
-    
-    // Apply daily loss adjustment
-    const lossAdjustment = this.dailyStats.dailyLoss > 1500 ? 0.7 : 1.0;
-    return scaling.maxLots * lossAdjustment;
+
+    // Round to 2 decimal places
+    destLots = Math.round(destLots * 100) / 100;
+
+    logger.info(`📊 Position sizing: ${sourceLots} lots × ${accountSizeMultiplier} = ${destLots} lots`);
+    return destLots;
   }
   
   /**

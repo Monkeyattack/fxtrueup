@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copy Trading Routes - FX True Up</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // API base URL - use relative path since we're served from the same domain
+        const API_BASE_URL = '';
+
+        // Main App Component
+        function App() {
+            const [routes, setRoutes] = useState([]);
+            const [config, setConfig] = useState(null);
+            const [stats, setStats] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [showEditor, setShowEditor] = useState(false);
+            const [selectedRoute, setSelectedRoute] = useState(null);
+
+            // Load initial data
+            useEffect(() => {
+                loadConfig();
+                loadStats();
+                const interval = setInterval(() => {
+                    loadStats();
+                }, 10000); // Refresh stats every 10 seconds
+                return () => clearInterval(interval);
+            }, []);
+
+            const loadConfig = async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/routes/config`);
+                    const data = await response.json();
+                    setConfig(data);
+                    setRoutes(data.routes || []);
+                    setLoading(false);
+                } catch (error) {
+                    console.error('Error loading config:', error);
+                    setLoading(false);
+                }
+            };
+
+            const loadStats = async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/routes/stats`);
+                    const data = await response.json();
+                    setStats(data);
+                } catch (error) {
+                    console.error('Error loading stats:', error);
+                }
+            };
+
+            const handleToggleRoute = async (route) => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/routes/${route.id}/toggle`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled: !route.enabled })
+                    });
+                    if (response.ok) {
+                        loadConfig();
+                    }
+                } catch (error) {
+                    console.error('Error toggling route:', error);
+                }
+            };
+
+            const handleDeleteRoute = async (route) => {
+                if (!confirm(`Are you sure you want to delete route "${route.name}"?`)) return;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/routes/${route.id}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        loadConfig();
+                    }
+                } catch (error) {
+                    console.error('Error deleting route:', error);
+                }
+            };
+
+            const handleSaveRoute = async (routeData) => {
+                try {
+                    const url = selectedRoute
+                        ? `${API_BASE_URL}/api/routes/${selectedRoute.id}`
+                        : `${API_BASE_URL}/api/routes`;
+
+                    const response = await fetch(url, {
+                        method: selectedRoute ? 'PUT' : 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(routeData)
+                    });
+
+                    if (response.ok) {
+                        setShowEditor(false);
+                        setSelectedRoute(null);
+                        loadConfig();
+                    }
+                } catch (error) {
+                    console.error('Error saving route:', error);
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                        <div className="text-gray-600">Loading routes...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <header className="bg-white shadow-sm border-b">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="py-6 flex items-center justify-between">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-900">Copy Trading Routes</h1>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        Manage automated copy trading between accounts
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setSelectedRoute(null);
+                                        setShowEditor(true);
+                                    }}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    + New Route
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Stats Overview */}
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <div className="text-sm text-gray-600">Total Routes</div>
+                                <div className="text-2xl font-bold text-gray-900 mt-1">
+                                    {routes.length}
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <div className="text-sm text-gray-600">Active Routes</div>
+                                <div className="text-2xl font-bold text-green-600 mt-1">
+                                    {routes.filter(r => r.enabled).length}
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <div className="text-sm text-gray-600">Total Profit</div>
+                                <div className="text-2xl font-bold text-green-600 mt-1">
+                                    ${stats?.global?.totalProfit?.toFixed(2) || '0.00'}
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <div className="text-sm text-gray-600">Total Loss</div>
+                                <div className="text-2xl font-bold text-red-600 mt-1">
+                                    -${stats?.global?.totalLoss?.toFixed(2) || '0.00'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Routes List */}
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-12">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {routes.map(route => (
+                                <RouteCard
+                                    key={route.id}
+                                    route={route}
+                                    config={config}
+                                    stats={stats?.routes?.find(r => r.routeId === route.id)}
+                                    onToggle={() => handleToggleRoute(route)}
+                                    onEdit={() => {
+                                        setSelectedRoute(route);
+                                        setShowEditor(true);
+                                    }}
+                                    onDelete={() => handleDeleteRoute(route)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Route Editor Modal */}
+                    {showEditor && (
+                        <RouteEditor
+                            route={selectedRoute}
+                            config={config}
+                            onClose={() => {
+                                setShowEditor(false);
+                                setSelectedRoute(null);
+                            }}
+                            onSave={handleSaveRoute}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        // Route Card Component
+        function RouteCard({ route, config, stats, onToggle, onEdit, onDelete }) {
+            const source = config.accounts[route.source] || {};
+            const destination = config.accounts[route.destination] || {};
+            const ruleSet = config.ruleSets[route.ruleSet] || {};
+
+            return (
+                <div className={`bg-white rounded-lg shadow-lg overflow-hidden ${
+                    route.enabled ? 'ring-2 ring-green-500' : ''
+                }`}>
+                    <div className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">{route.name}</h3>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                route.enabled
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }`}>
+                                {route.enabled ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+
+                        <p className="text-sm text-gray-600 mb-4">{route.description}</p>
+
+                        {/* Route Flow */}
+                        <div className="flex items-center justify-between mb-4 text-sm">
+                            <div className="text-center">
+                                <div className="font-medium">{source.nickname || 'Source'}</div>
+                                <div className="text-gray-500">${source.balance?.toLocaleString() || '0'}</div>
+                            </div>
+                            <div className="px-2">
+                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </div>
+                            <div className="text-center">
+                                <div className="font-medium">{destination.nickname || 'Destination'}</div>
+                                <div className="text-gray-500">${destination.balance?.toLocaleString() || '0'}</div>
+                            </div>
+                        </div>
+
+                        <div className="text-center text-sm text-blue-600 mb-4">
+                            {ruleSet.name || 'No Rule Set'}
+                        </div>
+
+                        {/* Stats */}
+                        {stats && (
+                            <div className="grid grid-cols-3 gap-2 text-center text-sm mb-4">
+                                <div>
+                                    <div className="text-gray-500">Detected</div>
+                                    <div className="font-medium">{stats.stats?.detected || 0}</div>
+                                </div>
+                                <div>
+                                    <div className="text-gray-500">Copied</div>
+                                    <div className="font-medium text-green-600">{stats.stats?.copied || 0}</div>
+                                </div>
+                                <div>
+                                    <div className="text-gray-500">P&L</div>
+                                    <div className={`font-medium ${
+                                        (stats.stats?.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                        ${(stats.stats?.profit || 0).toFixed(2)}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-between pt-4 border-t">
+                            <button
+                                onClick={onToggle}
+                                className={`px-3 py-1 text-sm rounded-md ${
+                                    route.enabled
+                                        ? 'bg-red-50 text-red-700 hover:bg-red-100'
+                                        : 'bg-green-50 text-green-700 hover:bg-green-100'
+                                }`}
+                            >
+                                {route.enabled ? 'Pause' : 'Enable'}
+                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={onEdit}
+                                    className="p-1 text-gray-600 hover:text-gray-800"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={onDelete}
+                                    className="p-1 text-gray-600 hover:text-red-600"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Route Editor Component
+        function RouteEditor({ route, config, onClose, onSave }) {
+            const [formData, setFormData] = useState({
+                name: route?.name || '',
+                description: route?.description || '',
+                source: route?.source || '',
+                destination: route?.destination || '',
+                ruleSet: route?.ruleSet || '',
+                enabled: route?.enabled || false,
+                notifications: route?.notifications || {
+                    onCopy: true,
+                    onError: true,
+                    onFilter: false,
+                    channel: 'telegram'
+                }
+            });
+
+            const sourceAccounts = Object.entries(config.accounts || {})
+                .filter(([_, acc]) => acc.type === 'source');
+
+            const destAccounts = Object.entries(config.accounts || {})
+                .filter(([_, acc]) => acc.type === 'destination');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave(formData);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+                        <form onSubmit={handleSubmit}>
+                            <div className="px-6 py-4 border-b">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                        {route ? 'Edit Route' : 'Create New Route'}
+                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={onClose}
+                                        className="text-gray-400 hover:text-gray-500"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-8rem)]">
+                                {/* Basic Information */}
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-medium text-gray-900">Basic Information</h4>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Route Name</label>
+                                        <input
+                                            type="text"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Description</label>
+                                        <input
+                                            type="text"
+                                            value={formData.description}
+                                            onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Account Selection - Only for new routes */}
+                                {!route && (
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-medium text-gray-900">Account Selection</h4>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Source Account</label>
+                                            <select
+                                                value={formData.source}
+                                                onChange={(e) => setFormData({...formData, source: e.target.value})}
+                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                                required
+                                            >
+                                                <option value="">Select source account</option>
+                                                {sourceAccounts.map(([id, account]) => (
+                                                    <option key={id} value={id}>
+                                                        {account.nickname} - ${account.balance?.toLocaleString() || '0'}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Destination Account</label>
+                                            <select
+                                                value={formData.destination}
+                                                onChange={(e) => setFormData({...formData, destination: e.target.value})}
+                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                                required
+                                            >
+                                                <option value="">Select destination account</option>
+                                                {destAccounts.map(([id, account]) => (
+                                                    <option key={id} value={id}>
+                                                        {account.nickname} - ${account.balance?.toLocaleString() || '0'}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Rule Set Selection */}
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-medium text-gray-900">Trading Rules</h4>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Rule Set</label>
+                                        <select
+                                            value={formData.ruleSet}
+                                            onChange={(e) => setFormData({...formData, ruleSet: e.target.value})}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                            required
+                                        >
+                                            <option value="">Select rule set</option>
+                                            {Object.entries(config.ruleSets || {}).map(([id, ruleSet]) => (
+                                                <option key={id} value={id}>
+                                                    {ruleSet.name} - {ruleSet.description}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Status */}
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-medium text-gray-900">Status</h4>
+
+                                    <label className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.enabled}
+                                            onChange={(e) => setFormData({...formData, enabled: e.target.checked})}
+                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-700">Enable route immediately</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                                >
+                                    {route ? 'Save Changes' : 'Create Route'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
