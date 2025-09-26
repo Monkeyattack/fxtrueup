@@ -9,55 +9,60 @@ import dotenv from 'dotenv';
 import { advancedRouter } from './advancedRouter.js';
 import { createClient } from 'redis';
 import { logger } from '../utils/logger.js';
+import { vaultManager } from './vaultConfig.js';
 
 dotenv.config();
 
-// Get Redis config from environment or use defaults
-const redisConfig = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD || 'dqP7gPpALbQKW8OmJg2eqgLRO8GCjSXdlVDRgG2IXEJbMnYOoD',
-  db: parseInt(process.env.REDIS_DB || '0')
-};
+let redisConfig;
+let redisClient;
+let subscriber;
 
-// Create Redis client for command subscription
-const redisClient = createClient({
-  socket: {
-    host: redisConfig.host,
-    port: redisConfig.port
-  },
-  password: redisConfig.password,
-  database: redisConfig.db
-});
+function createRedisClients(config) {
+  const clientOptions = {
+    socket: {
+      host: config.host,
+      port: config.port
+    },
+    password: config.password,
+    database: config.db
+  };
 
-const subscriber = createClient({
-  socket: {
-    host: redisConfig.host,
-    port: redisConfig.port
-  },
-  password: redisConfig.password,
-  database: redisConfig.db
-});
+  redisClient = createClient(clientOptions);
+  subscriber = createClient(clientOptions);
 
-// Error handling
-redisClient.on('error', (err) => {
-  logger.error('Redis Client Error:', err);
-});
+  redisClient.on('error', (err) => {
+    logger.error('Redis Client Error:', err);
+  });
 
-subscriber.on('error', (err) => {
-  logger.error('Redis Subscriber Error:', err);
-});
+  subscriber.on('error', (err) => {
+    logger.error('Redis Subscriber Error:', err);
+  });
+}
 
 // Connect to Redis
 async function connectRedis() {
+  if (redisClient?.isOpen && subscriber?.isOpen) {
+    return;
+  }
+
+  redisConfig = await vaultManager.getRedisConfig();
+
+  if (!redisClient || !subscriber) {
+    createRedisClients(redisConfig);
+  }
+
   await redisClient.connect();
-  logger.info('📡 Connected to Redis');
+  logger.info(`📡 Connected to Redis at ${redisConfig.host}:${redisConfig.port}`);
   await subscriber.connect();
   logger.info('📡 Subscriber connected to Redis');
 }
 
 // Subscribe to routing commands
 async function subscribeToCommands() {
+  if (!subscriber) {
+    throw new Error('Redis subscriber not initialized');
+  }
+
   await subscriber.subscribe('routing:commands', async (message) => {
     try {
       const command = JSON.parse(message);
@@ -74,8 +79,11 @@ async function subscribeToCommands() {
           break;
 
         case 'get_stats':
+          if (!redisClient) {
+            throw new Error('Redis client not initialized');
+          }
           const stats = advancedRouter.getStats();
-          redisClient.set('routing:stats:current', JSON.stringify(stats));
+          await redisClient.set('routing:stats:current', JSON.stringify(stats));
           break;
 
         default:
@@ -89,7 +97,7 @@ async function subscribeToCommands() {
 
 // Update route statistics in Redis periodically
 async function updateStats() {
-  if (!advancedRouter.isRunning) return;
+  if (!advancedRouter.isRunning || !redisClient?.isOpen) return;
 
   const stats = advancedRouter.getStats();
 
@@ -115,7 +123,7 @@ async function main() {
   try {
     console.log('🚀 Advanced Router Service Starting...');
 
-    // Connect to Redis
+    // Connect to Redis using Vault-backed configuration
     await connectRedis();
 
     // Subscribe to commands
@@ -148,8 +156,12 @@ async function shutdown() {
     await advancedRouter.stop();
 
     // Close Redis connections
-    await redisClient.disconnect();
-    await subscriber.disconnect();
+    if (redisClient?.isOpen) {
+      await redisClient.disconnect();
+    }
+    if (subscriber?.isOpen) {
+      await subscriber.disconnect();
+    }
 
     console.log('✅ Service stopped gracefully');
     process.exit(0);

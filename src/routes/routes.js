@@ -4,36 +4,39 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
+import { vaultManager } from '../services/vaultConfig.js';
 
 const router = express.Router();
 
-// Get Redis config from environment or use defaults
-const redisConfig = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD || 'dqP7gPpALbQKW8OmJg2eqgLRO8GCjSXdlVDRgG2IXEJbMnYOoD',
-  db: parseInt(process.env.REDIS_DB || '0')
-};
+// Initialize Redis client (will be configured on first use)
+let redisClient = null;
 
-// Initialize Redis client
-const redisClient = createClient({
-  socket: {
-    host: redisConfig.host,
-    port: redisConfig.port
-  },
-  password: redisConfig.password,
-  database: redisConfig.db
-});
+// Initialize Redis connection
+async function initRedis() {
+  if (redisClient && redisClient.isOpen) {
+    return redisClient;
+  }
 
-redisClient.on('error', (err) => {
-  logger.error('Redis Client Error:', err);
-});
+  const redisConfig = await vaultManager.getRedisConfig();
 
-// Connect to Redis
-(async () => {
+  redisClient = createClient({
+    socket: {
+      host: redisConfig.host,
+      port: redisConfig.port
+    },
+    password: redisConfig.password,
+    database: redisConfig.db
+  });
+
+  redisClient.on('error', (err) => {
+    logger.error('Redis Client Error:', err);
+  });
+
   await redisClient.connect();
   logger.info('Connected to Redis for routing service');
-})();
+
+  return redisClient;
+}
 
 // Path to routing config file
 const __filename = fileURLToPath(import.meta.url);
@@ -67,7 +70,8 @@ async function loadConfig() {
 async function saveConfig(config) {
   await fs.writeFile(configPath, JSON.stringify(config, null, 2));
   // Notify router service to reload config
-  await redisClient.publish('routing:commands', JSON.stringify({ command: 'reload_config' }));
+  const client = await initRedis();
+  await client.publish('routing:commands', JSON.stringify({ command: 'reload_config' }));
 }
 
 // Get routing configuration
@@ -84,7 +88,8 @@ router.get('/config', async (req, res) => {
 // Get route statistics
 router.get('/stats', async (req, res) => {
   try {
-    const data = await redisClient.get('routing:stats:current');
+    const client = await initRedis();
+    const data = await client.get('routing:stats:current');
     const stats = data ? JSON.parse(data) : null;
 
     res.json(stats || {
@@ -173,7 +178,8 @@ router.post('/:routeId/toggle', async (req, res) => {
     await saveConfig(config);
 
     // Send command to router service
-    await redisClient.publish('routing:commands', JSON.stringify({
+    const client = await initRedis();
+    await client.publish('routing:commands', JSON.stringify({
       command: 'toggle_route',
       route_id: req.params.routeId,
       enabled: req.body.enabled

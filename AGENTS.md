@@ -1,37 +1,35 @@
 # Repository Guidelines
 
-## Project Structure & Modules
-- `src/`: Server modules (entry variants, `services/`, `routes/`, `middleware/`, `utils/`). Prefer adding new logic under `src/services` and wiring through `src/index*.js`.
-- `public/`: Static frontend (HTML/JS/CSS). Do not serve secrets here.
-- Root entries: `server.cjs` (default), plus `server-secure.cjs` and `server-optimized.cjs` for hardened/optimized runs.
-- Config & ops: `.env` (use `.env.template`), PM2 files `ecosystem*.cjs`, SQL in `billing-schema.sql`, helper scripts in `scripts/`.
-- Tests: ad‑hoc Node scripts named `test-*.js` in root and `src/`.
+## Project Structure & Module Organization
+- Primary server entries live at `server.cjs`, `server-secure.cjs`, and `server-optimized.cjs`; wire new features through `src/index*.js`.
+- Place business logic under `src/services/`; expose routes, middleware, and utilities from the matching folders within `src/`.
+- Keep static frontend assets in `public/`; avoid shipping secrets or generated files there.
+- Ad-hoc integration scripts and tests follow the `test-*.js` naming pattern at the repository root or under `src/`.
 
-## Build, Test, and Development
-- Install: `npm install` (Node >=16).
-- Dev server: `npm run dev` (nodemon with `server.cjs`).
-- Run server: `npm start` | `npm run start:secure` | `npm run start:optimized`.
-- Lint: `npm run lint` (ESLint over root and `public/js/`).
-- Performance check: `npm run test:performance`.
-- Ad‑hoc tests: `node test-connection-pool.js`, `node src/test-squeeze-integration.js`.
-- PM2 (optional): `pm2 start ecosystem.config.cjs`.
+## Build, Test, and Development Commands
+- `npm install` sets up dependencies (Node 16+ required).
+- `npm run dev` launches the Nodemon-driven dev server using `server.cjs` with live reload.
+- `npm start`, `npm run start:secure`, and `npm run start:optimized` boot the respective production entrypoints.
+- `npm run lint` runs ESLint across the backend and `public/js/` to catch style and quality issues.
+- `npm run test:performance` exercises the performance suite; trigger ad-hoc scripts via `node test-*.js`.
 
-## Coding Style & Conventions
-- JavaScript only; mix of CommonJS (`.cjs`) for entrypoints and ESM under `src/`.
-- Indentation: 2 spaces; use semicolons; single quotes.
-- Filenames: kebab-case for scripts (`risk-monitor-dashboard.js`), `.cjs` for Node configs.
-- Keep services stateless; read config from `process.env`.
+## Coding Style & Naming Conventions
+- JavaScript only; use ESM under `src/` and CommonJS for entry files and configs.
+- Format with 2 spaces, include semicolons, and prefer single quotes for strings.
+- Name scripts in kebab-case (e.g., `risk-monitor-dashboard.js`) and configs with `.cjs`.
+- Keep services stateless and load configuration from `process.env`.
 
 ## Testing Guidelines
-- Prefer small, focused scripts named `test-*.js` for integration flows.
-- For unit tests, you may add Jest (`devDependency`) using `*.test.js` or `__tests__/` and `supertest` for HTTP routes.
-- Cover core paths: MetaApi service (`metaapi-service*.cjs|mjs`), cache (`sqlite-cache*.cjs`), and entry middleware.
+- Favor focused integration scripts named `test-*.js`; run them with `node path/to/test-file.js`.
+- Add Jest-based unit tests when useful (`*.test.js` or `__tests__/`), and pair HTTP route tests with `supertest`.
+- Ensure new work keeps `npm run lint` and any relevant test script passing before opening a PR.
 
-## Commit & Pull Requests
-- Commits: imperative, present tense, concise (e.g., “Fix connection pool retry”, “Add Stripe webhook handler”). Include scope when useful.
-- PRs: clear description, linked issues, repro/verification steps, screenshots for UI changes, and notes on env vars/migrations. Ensure `npm run lint` passes.
+## Commit & Pull Request Guidelines
+- Write commits in imperative, present tense (e.g., `Fix connection pool retry`); include scope when helpful.
+- PRs should link issues, describe verification steps, and attach screenshots for UI-facing changes.
+- Note any new env vars, migrations, or operational considerations in the PR description.
 
-## Security & Configuration
-- Required env vars include secrets for JWT and encryption; start from `.env.template`. Never commit `.env` or tokens.
-- App uses Helmet, CORS, rate‑limit, and sqlite—avoid raw SQL; prefer existing helpers.
-- Log carefully; redact tokens and account identifiers in errors.
+## Security & Configuration Tips
+- Start from `.env.template`; never commit `.env`, secrets, or tokens.
+- Use existing helpers for data access (e.g., `sqlite-cache*.cjs`); avoid ad-hoc SQL or leaking identifiers in logs.
+- Ensure Helmet, CORS, and rate-limiting middleware remain enabled in new entrypoints or routes.
