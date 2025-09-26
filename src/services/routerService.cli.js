@@ -7,20 +7,36 @@
 
 import dotenv from 'dotenv';
 import { advancedRouter } from './advancedRouter.js';
-import redis from 'redis';
+import { createClient } from 'redis';
 import { logger } from '../utils/logger.js';
 
 dotenv.config();
 
+// Get Redis config from environment or use defaults
+const redisConfig = {
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || 'dqP7gPpALbQKW8OmJg2eqgLRO8GCjSXdlVDRgG2IXEJbMnYOoD',
+  db: parseInt(process.env.REDIS_DB || '0')
+};
+
 // Create Redis client for command subscription
-const redisClient = redis.createClient({
-  host: 'localhost',
-  port: 6379
+const redisClient = createClient({
+  socket: {
+    host: redisConfig.host,
+    port: redisConfig.port
+  },
+  password: redisConfig.password,
+  database: redisConfig.db
 });
 
-const subscriber = redis.createClient({
-  host: 'localhost',
-  port: 6379
+const subscriber = createClient({
+  socket: {
+    host: redisConfig.host,
+    port: redisConfig.port
+  },
+  password: redisConfig.password,
+  database: redisConfig.db
 });
 
 // Error handling
@@ -34,22 +50,15 @@ subscriber.on('error', (err) => {
 
 // Connect to Redis
 async function connectRedis() {
-  return new Promise((resolve) => {
-    redisClient.on('connect', () => {
-      logger.info('📡 Connected to Redis');
-      subscriber.on('connect', () => {
-        logger.info('📡 Subscriber connected to Redis');
-        resolve();
-      });
-    });
-  });
+  await redisClient.connect();
+  logger.info('📡 Connected to Redis');
+  await subscriber.connect();
+  logger.info('📡 Subscriber connected to Redis');
 }
 
 // Subscribe to routing commands
-function subscribeToCommands() {
-  subscriber.subscribe('routing:commands');
-
-  subscriber.on('message', async (channel, message) => {
+async function subscribeToCommands() {
+  await subscriber.subscribe('routing:commands', async (message) => {
     try {
       const command = JSON.parse(message);
       logger.info(`📨 Received command: ${command.command}`);
@@ -85,21 +94,19 @@ async function updateStats() {
   const stats = advancedRouter.getStats();
 
   // Update global stats
-  redisClient.setex('routing:stats:current', 60, JSON.stringify(stats));
+  await redisClient.setEx('routing:stats:current', 60, JSON.stringify(stats));
 
   // Update per-route stats
   for (const route of stats.routes) {
     const key = `routing:stats:${route.routeId}`;
-    redisClient.hset(key, {
-      detected: route.stats.detected || 0,
-      copied: route.stats.copied || 0,
-      filtered: route.stats.filtered || 0,
-      errors: route.stats.errors || 0,
-      profit: route.stats.profit || 0,
-      dailyLoss: route.stats.dailyLoss || 0,
-      lastActivity: new Date().toISOString()
-    });
-    redisClient.expire(key, 3600); // Expire after 1 hour
+    await redisClient.hSet(key, 'detected', String(route.stats.detected || 0));
+    await redisClient.hSet(key, 'copied', String(route.stats.copied || 0));
+    await redisClient.hSet(key, 'filtered', String(route.stats.filtered || 0));
+    await redisClient.hSet(key, 'errors', String(route.stats.errors || 0));
+    await redisClient.hSet(key, 'profit', String(route.stats.profit || 0));
+    await redisClient.hSet(key, 'dailyLoss', String(route.stats.dailyLoss || 0));
+    await redisClient.hSet(key, 'lastActivity', new Date().toISOString());
+    await redisClient.expire(key, 3600); // Expire after 1 hour
   }
 }
 
@@ -112,7 +119,7 @@ async function main() {
     await connectRedis();
 
     // Subscribe to commands
-    subscribeToCommands();
+    await subscribeToCommands();
 
     // Start the router
     await advancedRouter.start();
@@ -141,8 +148,8 @@ async function shutdown() {
     await advancedRouter.stop();
 
     // Close Redis connections
-    redisClient.quit();
-    subscriber.quit();
+    await redisClient.disconnect();
+    await subscriber.disconnect();
 
     console.log('✅ Service stopped gracefully');
     process.exit(0);

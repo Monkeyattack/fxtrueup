@@ -68,7 +68,8 @@
       "Bash(pm2 info:*)",
       "Read(/home/claude-dev/repos/meta-trader-hub/docs/**)",
       "Read(//home/claude-dev/.pm2/logs/**)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(pm2 delete:*)"
     ],
     "deny": [],
     "additionalDirectories": [
