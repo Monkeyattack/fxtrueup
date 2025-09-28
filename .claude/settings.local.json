@@ -69,7 +69,10 @@
       "Read(/home/claude-dev/repos/meta-trader-hub/docs/**)",
       "Read(//home/claude-dev/.pm2/logs/**)",
       "Bash(python3:*)",
-      "Bash(pm2 delete:*)"
+      "Bash(pm2 delete:*)",
+      "Bash(vault read:*)",
+      "Bash(./run-all-tests.sh)",
+      "Bash(./run-basic-tests.sh:*)"
     ],
     "deny": [],
     "additionalDirectories": [

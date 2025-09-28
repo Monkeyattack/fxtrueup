@@ -9,10 +9,11 @@ import { tradeTracker } from '../utils/tradeTracker.js';
 import telegram from '../utils/telegram.js';
 
 class FilteredCopyTrader {
-  constructor(sourceAccountId, destAccountId, destRegion = 'new-york') {
+  constructor(sourceAccountId, destAccountId, destRegion = 'new-york', sourceRegion = 'new-york') {
     this.sourceAccountId = sourceAccountId;
     this.destAccountId = destAccountId;
     this.destRegion = destRegion;
+    this.sourceRegion = sourceRegion;
     
     // Tracking state
     this.sourcePositions = new Map(); // Track source positions
@@ -57,7 +58,7 @@ class FilteredCopyTrader {
     logger.info(`Daily Loss Limit: $${this.config.dailyLossLimit}`);
     
     // Initial sync of source positions only
-    const initialPositions = await poolClient.getPositions(this.sourceAccountId, 'london');
+    const initialPositions = await poolClient.getPositions(this.sourceAccountId, this.sourceRegion);
     initialPositions.forEach(pos => {
       this.sourcePositions.set(pos.id, pos);
       // Mark existing positions as already processed to avoid copying old trades
@@ -88,7 +89,7 @@ class FilteredCopyTrader {
    */
   async detectNewTrades() {
     try {
-      const currentPositions = await poolClient.getPositions(this.sourceAccountId, 'london');
+      const currentPositions = await poolClient.getPositions(this.sourceAccountId, this.sourceRegion);
       const newTrades = [];
       
       // Build a set of current position IDs

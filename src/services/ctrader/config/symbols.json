@@ -1,0 +1,70 @@
+{
+  "symbolMapping": {
+    "XAUUSD": {
+      "cTraderId": 22395,
+      "cTraderSymbol": "GOLD",
+      "multiplier": 1,
+      "digits": 2
+    },
+    "EURUSD": {
+      "cTraderId": 1,
+      "cTraderSymbol": "EURUSD",
+      "multiplier": 1,
+      "digits": 5
+    },
+    "GBPUSD": {
+      "cTraderId": 2,
+      "cTraderSymbol": "GBPUSD",
+      "multiplier": 1,
+      "digits": 5
+    },
+    "USDJPY": {
+      "cTraderId": 3,
+      "cTraderSymbol": "USDJPY",
+      "multiplier": 1,
+      "digits": 3
+    },
+    "AUDUSD": {
+      "cTraderId": 4,
+      "cTraderSymbol": "AUDUSD",
+      "multiplier": 1,
+      "digits": 5
+    },
+    "USDCAD": {
+      "cTraderId": 5,
+      "cTraderSymbol": "USDCAD",
+      "multiplier": 1,
+      "digits": 5
+    },
+    "USDCHF": {
+      "cTraderId": 6,
+      "cTraderSymbol": "USDCHF",
+      "multiplier": 1,
+      "digits": 5
+    },
+    "NZDUSD": {
+      "cTraderId": 7,
+      "cTraderSymbol": "NZDUSD",
+      "multiplier": 1,
+      "digits": 5
+    },
+    "BTCUSD": {
+      "cTraderId": 23456,
+      "cTraderSymbol": "Bitcoin",
+      "multiplier": 1,
+      "digits": 2
+    }
+  },
+  "orderTypeMapping": {
+    "ORDER_TYPE_BUY": "BUY",
+    "ORDER_TYPE_SELL": "SELL",
+    "ORDER_TYPE_BUY_LIMIT": "BUY_LIMIT",
+    "ORDER_TYPE_SELL_LIMIT": "SELL_LIMIT",
+    "ORDER_TYPE_BUY_STOP": "BUY_STOP",
+    "ORDER_TYPE_SELL_STOP": "SELL_STOP"
+  },
+  "positionTypeMapping": {
+    "BUY": "POSITION_TYPE_BUY",
+    "SELL": "POSITION_TYPE_SELL"
+  }
+}

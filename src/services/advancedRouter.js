@@ -89,7 +89,8 @@ class AdvancedRouter {
     const trader = new FilteredCopyTrader(
       route.source,
       route.destination,
-      dest.region
+      dest.region,
+      source.region
     );
 
     // Apply rule set configuration
