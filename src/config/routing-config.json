@@ -39,6 +39,30 @@
       "platform": "mt5",
       "balance": 10000,
       "broker": "ICMarkets"
+    },
+    "ctrader-demo-12345": {
+      "nickname": "CTraderDemo",
+      "environment": "demo",
+      "type": "destination",
+      "platform": "ctrader",
+      "balance": 50000,
+      "broker": "ICMarkets"
+    },
+    "ctrader-source-67890": {
+      "nickname": "CTraderSignals",
+      "environment": "demo",
+      "type": "source",
+      "platform": "ctrader",
+      "balance": 100000,
+      "broker": "Pepperstone"
+    },
+    "ctrader-live-99999": {
+      "nickname": "CTraderLive",
+      "environment": "live",
+      "type": "destination",
+      "platform": "ctrader",
+      "balance": 25000,
+      "broker": "RoboForex"
     }
   },
 
@@ -246,6 +270,51 @@
         "onCopy": true,
         "onError": true,
         "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "route_005",
+      "enabled": false,
+      "name": "MT5 to cTrader Copy",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "ctrader-demo-12345",
+      "ruleSet": "proportional_118x",
+      "description": "Cross-platform copy from MT5 to cTrader",
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "route_006",
+      "enabled": false,
+      "name": "cTrader Signal Provider",
+      "source": "ctrader-source-67890",
+      "destination": "019ec0f0-09f5-4230-a7bd-fa2930af07a4",
+      "ruleSet": "conservative_05x",
+      "description": "Copy from cTrader source to MT5 destination",
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "route_007",
+      "enabled": false,
+      "name": "cTrader to cTrader",
+      "source": "ctrader-source-67890",
+      "destination": "ctrader-live-99999",
+      "ruleSet": "dynamic_risk",
+      "description": "Same platform copy between cTrader accounts",
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": true,
         "channel": "telegram"
       }
     }

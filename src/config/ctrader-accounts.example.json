@@ -1,0 +1,99 @@
+{
+  "cTraderAccountsExample": {
+    "_comment": "Example cTrader account configurations - Replace with your actual account IDs and credentials",
+
+    "accounts": {
+      "ctrader-demo-12345": {
+        "accountId": "12345",
+        "ctidTraderAccountId": 12345,
+        "nickname": "CTraderDemo",
+        "environment": "demo",
+        "type": "destination",
+        "platform": "ctrader",
+        "balance": 50000,
+        "broker": "ICMarkets",
+        "brokerTitle": "IC Markets cTrader",
+        "_vaultPath": "secret/ctrader/accounts/12345"
+      },
+
+      "ctrader-source-67890": {
+        "accountId": "67890",
+        "ctidTraderAccountId": 67890,
+        "nickname": "CTraderSignals",
+        "environment": "demo",
+        "type": "source",
+        "platform": "ctrader",
+        "balance": 100000,
+        "broker": "Pepperstone",
+        "brokerTitle": "Pepperstone cTrader",
+        "_vaultPath": "secret/ctrader/accounts/67890"
+      },
+
+      "ctrader-live-99999": {
+        "accountId": "99999",
+        "ctidTraderAccountId": 99999,
+        "nickname": "CTraderLive",
+        "environment": "live",
+        "type": "destination",
+        "platform": "ctrader",
+        "balance": 25000,
+        "broker": "RoboForex",
+        "brokerTitle": "RoboForex cTrader",
+        "_vaultPath": "secret/ctrader/accounts/99999"
+      }
+    },
+
+    "vaultConfiguration": {
+      "_comment": "Store these in Vault at the specified paths",
+
+      "oauthCredentials": {
+        "_path": "secret/ctrader/oauth",
+        "client_id": "your_ctrader_app_client_id",
+        "client_secret": "your_ctrader_app_client_secret",
+        "redirect_uri": "http://localhost:8080/api/ctrader/callback"
+      },
+
+      "accountTokens": {
+        "_comment": "After OAuth flow, tokens are stored per account",
+        "_pathPattern": "secret/ctrader/accounts/{accountId}",
+        "example": {
+          "access_token": "jwt_access_token_here",
+          "refresh_token": "refresh_token_here",
+          "expires_at": "2024-12-31T23:59:59Z"
+        }
+      }
+    },
+
+    "routeExamples": [
+      {
+        "name": "MT5 to cTrader",
+        "source": "your-mt5-account-id",
+        "destination": "ctrader-demo-12345",
+        "description": "Cross-platform copy trading"
+      },
+      {
+        "name": "cTrader to MT5",
+        "source": "ctrader-source-67890",
+        "destination": "your-mt5-account-id",
+        "description": "Reverse cross-platform copy"
+      },
+      {
+        "name": "cTrader to cTrader",
+        "source": "ctrader-source-67890",
+        "destination": "ctrader-live-99999",
+        "description": "Same platform copy"
+      }
+    ],
+
+    "setupSteps": [
+      "1. Register at https://openapi.ctrader.com/ and create an application",
+      "2. Get your OAuth2 credentials (client_id and client_secret)",
+      "3. Store OAuth credentials in Vault: vault kv put secret/ctrader/oauth client_id=... client_secret=...",
+      "4. Get your cTrader account IDs from your broker",
+      "5. Update this configuration with your actual account IDs",
+      "6. Add accounts to routing-config.json",
+      "7. Run OAuth flow to get access tokens for each account",
+      "8. Start the Python pool service: cd src/services/ctrader && python3 ctrader_pool_api.py"
+    ]
+  }
+}
