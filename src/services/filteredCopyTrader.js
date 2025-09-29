@@ -247,9 +247,10 @@ class FilteredCopyTrader {
    */
   async shouldCopyTrade(trade) {
     const reasons = [];
-    
+
     // 1. Check if we've already processed this trade
     if (this.processedTrades.has(trade.id)) {
+      logger.debug(`⏭️ Skipping trade ${trade.id} - already processed (${this.processedTrades.size} trades in set)`);
       return false; // Silent skip - already processed
     }
     
