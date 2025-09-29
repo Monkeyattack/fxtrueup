@@ -73,7 +73,9 @@
       "Bash(vault read:*)",
       "Bash(./run-all-tests.sh)",
       "Bash(./run-basic-tests.sh:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pm2 status:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "additionalDirectories": [

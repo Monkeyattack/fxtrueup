@@ -180,25 +180,10 @@ class PoolClient {
   }
 
   async getRecentHistory(accountId, region, hours = 24, symbol = null) {
-    try {
-      const params = {
-        region: region,
-        hours: hours
-      };
-
-      if (symbol) {
-        params.symbol = symbol;
-      }
-
-      const response = await this.client.get(`/accounts/${accountId}/history`, {
-        params
-      });
-
-      return response.data.history || response.data || [];
-    } catch (error) {
-      logger.error(`Failed to get recent history: ${error.message}`);
-      return [];
-    }
+    // This endpoint doesn't exist in the pool API
+    // History tracking should be done via real-time position monitoring
+    logger.debug(`getRecentHistory deprecated - use real-time position monitoring instead`);
+    return [];
   }
 
   // ============= STREAMING OPERATIONS =============
