@@ -13,7 +13,13 @@ module.exports = {
         REDIS_HOST: 'localhost',
         REDIS_PORT: 6379,
         REDIS_PASSWORD: '9W_n8pNROA_ZXOZt6KoKqL8V7FAvuAySw-kCmHSKBrA',
-        REDIS_DB: 0
+        REDIS_DB: 0,
+        // cTrader OAuth2 credentials (loaded from environment or Vault)
+        CTRADER_CLIENT_ID: process.env.CTRADER_CLIENT_ID || '',
+        CTRADER_CLIENT_SECRET: process.env.CTRADER_CLIENT_SECRET || '',
+        CTRADER_REDIRECT_URI: process.env.CTRADER_REDIRECT_URI || 'http://localhost:8080/api/ctrader/callback',
+        // cTrader Pool Service URL
+        CTRADER_POOL_URL: process.env.CTRADER_POOL_URL || 'http://localhost:8088'
       },
       error_file: './logs/router-error.log',
       out_file: './logs/router-out.log',
