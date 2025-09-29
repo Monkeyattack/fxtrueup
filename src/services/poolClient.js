@@ -228,6 +228,31 @@ class PoolClient {
     }
   }
 
+  async getStreamingConnection(accountId, region) {
+    try {
+      // Note: The pool API manages the actual streaming connections
+      // We return a proxy object that routes through the pool
+      return {
+        addSynchronizationListener: (listener) => {
+          // Store listener reference for event routing
+          this._streamingListeners = this._streamingListeners || new Map();
+          this._streamingListeners.set(accountId, listener);
+        },
+        removeSynchronizationListener: (listener) => {
+          if (this._streamingListeners) {
+            this._streamingListeners.delete(accountId);
+          }
+        },
+        subscribeToMarketData: async (symbol) => {
+          return await this.subscribeToSymbol(symbol);
+        }
+      };
+    } catch (error) {
+      logger.error(`Failed to get streaming connection: ${error.message}`);
+      return null;
+    }
+  }
+
   async getPrice(symbol) {
     try {
       const response = await this.client.get(`/prices/${symbol}`);

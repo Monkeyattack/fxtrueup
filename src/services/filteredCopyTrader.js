@@ -5,6 +5,7 @@
 
 import poolClient from './poolClient.js';
 import positionMapper from './positionMapper.js';
+import OptimizedPositionMonitor from './optimizedPositionMonitor.js';
 import { logger } from '../utils/logger.js';
 import { tradeTracker } from '../utils/tradeTracker.js';
 import telegram from '../utils/telegram.js';
@@ -29,6 +30,10 @@ class FilteredCopyTrader {
       dailyLoss: 0
     };
     
+    // Position monitor
+    this.positionMonitor = null;
+    this.monitorListeners = new Map();
+
     // Filter configuration
     this.config = {
       maxOpenPositions: 1,
@@ -54,11 +59,11 @@ class FilteredCopyTrader {
    * Start monitoring and copying trades
    */
   async start() {
-    logger.info('🚀 Starting Filtered Copy Trader with Degressive Scaling');
+    logger.info('🚀 Starting Filtered Copy Trader with Optimized Monitoring');
     logger.info(`Source: ${this.sourceAccountId}`);
     logger.info(`Destination: ${this.destAccountId}`);
     logger.info(`Daily Loss Limit: $${this.config.dailyLossLimit}`);
-    
+
     // Initial sync of source positions only
     const initialPositions = await poolClient.getPositions(this.sourceAccountId, this.sourceRegion);
     initialPositions.forEach(pos => {
@@ -67,42 +72,32 @@ class FilteredCopyTrader {
       this.processedTrades.add(pos.id);
     });
     logger.info(`📊 Initial source positions: ${initialPositions.length}`);
-    
-    // Start monitoring loop
-    this.monitorInterval = setInterval(() => {
-      this.checkForNewTrades();
-    }, 5000); // Check every 5 seconds
-    
-    logger.info('✅ Copy trader started successfully');
-  }
 
-  /**
-   * Stop the copy trader
-   */
-  stop() {
-    if (this.monitorInterval) {
-      clearInterval(this.monitorInterval);
-      logger.info('🛑 Copy trader stopped');
+    // Initialize position monitor
+    if (!this.positionMonitor) {
+      this.positionMonitor = new OptimizedPositionMonitor(poolClient);
     }
+
+    // Set up event listeners
+    this.setupMonitorListeners();
+
+    // Start monitoring
+    this.positionMonitor.startMonitoring(this.sourceAccountId, this.sourceRegion);
+
+    logger.info('✅ Copy trader started successfully with optimized monitoring');
   }
 
   /**
-   * Detect new trades from source account
+   * Set up position monitor event listeners
    */
-  async detectNewTrades() {
-    try {
-      const currentPositions = await poolClient.getPositions(this.sourceAccountId, this.sourceRegion);
-      const newTrades = [];
-      
-      // Build a set of current position IDs
-      const currentIds = new Set();
-      
-      for (const position of currentPositions) {
-        currentIds.add(position.id);
-        
-        // Check if this is a new position
-        if (!this.sourcePositions.has(position.id)) {
-          newTrades.push(position);
+  setupMonitorListeners() {
+    // Handle new positions
+    const openHandler = async (event) => {
+      if (event.accountId === this.sourceAccountId) {
+        const position = event.position;
+        if (!this.processedTrades.has(position.id)) {
+          this.sourcePositions.set(position.id, position);
+
           // Get account nickname from config
           const accountNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId.slice(0, 8);
           logger.info(`🎯 New trade detected from ${accountNickname} (${this.sourceAccountId}):`);
@@ -114,99 +109,101 @@ class FilteredCopyTrader {
 
           // Send Telegram notification
           telegram.notifyPositionDetected(position, this.sourceAccountId);
-        }
-      }
-      
-      // Update our tracked source positions
-      this.sourcePositions.clear();
-      currentPositions.forEach(pos => {
-        this.sourcePositions.set(pos.id, pos);
-      });
-      
-      // Clean up processed trades for positions that no longer exist
-      for (const tradeId of this.processedTrades) {
-        if (!currentIds.has(tradeId)) {
-          this.processedTrades.delete(tradeId);
-        }
-      }
-      
-      return newTrades;
-    } catch (error) {
-      logger.error('Error detecting new trades:', error);
-      tradeTracker.error({ id: 'detect', symbol: 'n/a' }, error.message);
-      return [];
-    }
-  }
 
-  /**
-   * Check for new trades to copy
-   */
-  async checkForNewTrades() {
-    try {
-      // Reset daily stats if new day
-      const today = new Date().toDateString();
-      if (this.dailyStats.date !== today) {
-        this.dailyStats = { date: today, trades: 0, profit: 0, dailyLoss: 0 };
-        this.processedTrades.clear(); // Reset processed trades for new day
-      }
-      
-      // Check if we've hit daily loss limit
-      if (this.dailyStats.dailyLoss >= this.config.dailyLossLimit) {
-        logger.warn(`⚠️ Daily loss limit reached: $${this.dailyStats.dailyLoss}`);;
-        return;
-      }
-      
-      // Only process NEW trades, not all positions
-      const newTrades = await this.detectNewTrades();
-      
-      for (const trade of newTrades) {
-        logger.info(`🔄 Processing detected trade ${trade.id} for route ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId} → ${this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId}`);
-        await this.executeCopyTrade(trade);
-      }
-
-      // Check for closed positions
-      await this.checkForClosedPositions();
-
-    } catch (error) {
-      logger.error('Error checking for trades:', error);
-      tradeTracker.error({ id: 'check', symbol: 'n/a' }, error.message);
-    }
-  }
-
-  /**
-   * Check for positions that have been closed on source account
-   */
-  async checkForClosedPositions() {
-    try {
-      const currentPositions = await poolClient.getPositions(this.sourceAccountId, this.sourceRegion);
-      const currentIds = new Set(currentPositions.map(pos => pos.id));
-
-      // Check each tracked position
-      for (const [positionId, position] of this.sourcePositions) {
-        if (!currentIds.has(positionId)) {
-          // Position has been closed
-          logger.info(`📉 Position ${positionId} closed on ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId}`);
-
-          // Get the mapping for this position
-          const mapping = await positionMapper.getMapping(this.sourceAccountId, positionId);
-
-          if (mapping) {
-            // Fetch deal history to get close details
-            const closeInfo = await this.getPositionCloseInfo(positionId);
-
-            // Copy the exit to destination
-            await this.copyPositionExit(mapping, closeInfo);
+          // Check daily stats before processing
+          if (this.checkDailyStats()) {
+            // Process the new trade
+            logger.info(`🔄 Processing detected trade ${position.id} for route ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId} → ${this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId}`);
+            await this.executeCopyTrade(position);
           } else {
-            logger.warn(`⚠️ No mapping found for closed position ${positionId}`);
+            logger.warn(`⚠️ Trade ${position.id} not copied due to daily loss limit`);
+            this.processedTrades.add(position.id); // Mark as processed to avoid retries
           }
-
-          // Remove from tracked positions
-          this.sourcePositions.delete(positionId);
         }
       }
-    } catch (error) {
-      logger.error('Error checking for closed positions:', error);
+    };
+
+    // Handle closed positions
+    const closeHandler = async (event) => {
+      if (event.accountId === this.sourceAccountId) {
+        logger.info(`📉 Position ${event.positionId} closed on ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId}`);
+
+        // Get the mapping for this position
+        const mapping = await positionMapper.getMapping(this.sourceAccountId, event.positionId);
+
+        if (mapping) {
+          // Copy the exit to destination
+          await this.copyPositionExit(mapping, event.closeInfo);
+        } else {
+          logger.warn(`⚠️ No mapping found for closed position ${event.positionId}`);
+        }
+
+        // Remove from tracked positions
+        this.sourcePositions.delete(event.positionId);
+      }
+    };
+
+    // Handle position updates (partial close, SL/TP changes)
+    const updateHandler = async (event) => {
+      if (event.accountId === this.sourceAccountId) {
+        const oldPos = event.oldPosition;
+        const newPos = event.newPosition;
+
+        // Check for partial close
+        if (oldPos.volume > newPos.volume) {
+          logger.info(`🔄 Partial close detected for position ${newPos.id}: ${oldPos.volume} → ${newPos.volume}`);
+          // Handle partial close if needed
+        }
+
+        // Update tracked position
+        this.sourcePositions.set(newPos.id, newPos);
+      }
+    };
+
+    // Store listeners for cleanup
+    this.monitorListeners.set('positionOpened', openHandler);
+    this.monitorListeners.set('positionClosed', closeHandler);
+    this.monitorListeners.set('positionUpdated', updateHandler);
+
+    // Add listeners
+    this.positionMonitor.on('positionOpened', openHandler);
+    this.positionMonitor.on('positionClosed', closeHandler);
+    this.positionMonitor.on('positionUpdated', updateHandler);
+  }
+
+  /**
+   * Stop the copy trader
+   */
+  stop() {
+    // Remove monitor listeners
+    if (this.positionMonitor) {
+      for (const [event, handler] of this.monitorListeners) {
+        this.positionMonitor.removeListener(event, handler);
+      }
+      this.positionMonitor.stopMonitoring(this.sourceAccountId);
     }
+
+    logger.info('🛑 Copy trader stopped');
+  }
+
+  /**
+   * Daily stats check (called by monitor events)
+   */
+  checkDailyStats() {
+    const today = new Date().toDateString();
+    if (this.dailyStats.date !== today) {
+      this.dailyStats = { date: today, trades: 0, profit: 0, dailyLoss: 0 };
+      this.processedTrades.clear(); // Reset processed trades for new day
+      logger.info(`📅 New trading day started: ${today}`);
+    }
+
+    // Check if we've hit daily loss limit
+    if (this.dailyStats.dailyLoss >= this.config.dailyLossLimit) {
+      logger.warn(`⚠️ Daily loss limit reached: $${this.dailyStats.dailyLoss}`);
+      return false; // Cannot trade
+    }
+
+    return true; // Can trade
   }
 
   /**
