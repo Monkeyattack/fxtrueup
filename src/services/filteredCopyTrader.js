@@ -4,16 +4,18 @@
  */
 
 import poolClient from './poolClient.js';
+import positionMapper from './positionMapper.js';
 import { logger } from '../utils/logger.js';
 import { tradeTracker } from '../utils/tradeTracker.js';
 import telegram from '../utils/telegram.js';
 
 class FilteredCopyTrader {
-  constructor(sourceAccountId, destAccountId, destRegion = 'new-york', sourceRegion = 'new-york') {
+  constructor(sourceAccountId, destAccountId, destRegion = 'new-york', sourceRegion = 'new-york', routeConfig = null) {
     this.sourceAccountId = sourceAccountId;
     this.destAccountId = destAccountId;
     this.destRegion = destRegion;
     this.sourceRegion = sourceRegion;
+    this.routeConfig = routeConfig;
     
     // Tracking state
     this.sourcePositions = new Map(); // Track source positions
@@ -34,7 +36,7 @@ class FilteredCopyTrader {
       fixedLotSize: 2.50, // Will be replaced by degressive scaling
       maxDailyTrades: 5,
       priceRangeFilter: 50, // pips
-      allowedHours: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17], // UTC
+      allowedHours: [], // Empty array means 24/7 trading allowed
       stopLossBuffer: 20, // pips
       takeProfitBuffer: 30, // pips
       dailyLossLimit: 3540, // 3% of $118k
@@ -101,7 +103,13 @@ class FilteredCopyTrader {
         // Check if this is a new position
         if (!this.sourcePositions.has(position.id)) {
           newTrades.push(position);
-          logger.info(`🎯 New trade detected: ${position.symbol} ${position.volume} lots @ ${position.openPrice}`);
+          // Get account nickname from config
+          const accountNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId.slice(0, 8);
+          logger.info(`🎯 New trade detected from ${accountNickname} (${this.sourceAccountId}):`);
+          logger.info(`   Symbol: ${position.symbol}`);
+          logger.info(`   Volume: ${position.volume} lots`);
+          logger.info(`   Price: ${position.openPrice}`);
+          logger.info(`   Position ID: ${position.id}`);
           tradeTracker.detected(position);
 
           // Send Telegram notification
@@ -152,13 +160,127 @@ class FilteredCopyTrader {
       const newTrades = await this.detectNewTrades();
       
       for (const trade of newTrades) {
+        logger.info(`🔄 Processing detected trade ${trade.id} for route ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId} → ${this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId}`);
         await this.executeCopyTrade(trade);
       }
-      
+
+      // Check for closed positions
+      await this.checkForClosedPositions();
+
     } catch (error) {
       logger.error('Error checking for trades:', error);
       tradeTracker.error({ id: 'check', symbol: 'n/a' }, error.message);
     }
+  }
+
+  /**
+   * Check for positions that have been closed on source account
+   */
+  async checkForClosedPositions() {
+    try {
+      const currentPositions = await poolClient.getPositions(this.sourceAccountId, this.sourceRegion);
+      const currentIds = new Set(currentPositions.map(pos => pos.id));
+
+      // Check each tracked position
+      for (const [positionId, position] of this.sourcePositions) {
+        if (!currentIds.has(positionId)) {
+          // Position has been closed
+          logger.info(`📉 Position ${positionId} closed on ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId}`);
+
+          // Get the mapping for this position
+          const mapping = await positionMapper.getMapping(this.sourceAccountId, positionId);
+
+          if (mapping) {
+            // Fetch deal history to get close details
+            const closeInfo = await this.getPositionCloseInfo(positionId);
+
+            // Copy the exit to destination
+            await this.copyPositionExit(mapping, closeInfo);
+          } else {
+            logger.warn(`⚠️ No mapping found for closed position ${positionId}`);
+          }
+
+          // Remove from tracked positions
+          this.sourcePositions.delete(positionId);
+        }
+      }
+    } catch (error) {
+      logger.error('Error checking for closed positions:', error);
+    }
+  }
+
+  /**
+   * Get close information for a position from deal history
+   */
+  async getPositionCloseInfo(positionId) {
+    try {
+      // Get recent history (last 24 hours)
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - 24 * 60 * 60 * 1000);
+
+      // Use the pool client to get history
+      const history = await poolClient.getRecentHistory(
+        this.sourceAccountId,
+        this.sourceRegion,
+        24 // hours
+      );
+
+      // Find deals related to this position
+      const positionDeals = history.filter(deal =>
+        deal.positionId === positionId &&
+        (deal.type === 'DEAL_TYPE_SELL' || deal.type === 'DEAL_TYPE_BUY')
+      );
+
+      // Get the closing deal
+      const closeDeal = positionDeals[positionDeals.length - 1];
+
+      if (closeDeal) {
+        return {
+          closeTime: closeDeal.time,
+          closePrice: closeDeal.price,
+          profit: closeDeal.profit || 0,
+          commission: closeDeal.commission || 0,
+          swap: closeDeal.swap || 0,
+          reason: this.determineCloseReason(closeDeal),
+          volume: closeDeal.volume
+        };
+      }
+
+      return {
+        closeTime: new Date().toISOString(),
+        reason: 'UNKNOWN',
+        profit: 0
+      };
+    } catch (error) {
+      logger.error(`Error getting position close info: ${error.message}`);
+      return {
+        closeTime: new Date().toISOString(),
+        reason: 'ERROR',
+        profit: 0
+      };
+    }
+  }
+
+  /**
+   * Determine the reason for position closure
+   */
+  determineCloseReason(deal) {
+    // Check deal comment for clues
+    const comment = (deal.comment || '').toLowerCase();
+
+    if (comment.includes('[tp]') || comment.includes('take profit')) {
+      return 'TAKE_PROFIT';
+    } else if (comment.includes('[sl]') || comment.includes('stop loss')) {
+      return 'STOP_LOSS';
+    } else if (comment.includes('so:') || comment.includes('stop out')) {
+      return 'STOP_OUT';
+    } else if (deal.reason === 'CLIENT') {
+      return 'MANUAL';
+    } else if (deal.reason === 'EXPERT') {
+      return 'EA_CLOSE';
+    }
+
+    return 'OTHER';
   }
 
   /**
@@ -201,12 +323,14 @@ class FilteredCopyTrader {
       return false;
     }
     
-    // 5. Check trading hours
-    const hour = new Date().getUTCHours();
-    if (!this.config.allowedHours.includes(hour)) {
-      reasons.push('Outside trading hours');
-      tradeTracker.rejected(trade, reasons);
-      return false;
+    // 5. Check trading hours (skip if allowedHours is empty)
+    if (this.config.allowedHours.length > 0) {
+      const hour = new Date().getUTCHours();
+      if (!this.config.allowedHours.includes(hour)) {
+        reasons.push('Outside trading hours');
+        tradeTracker.rejected(trade, reasons);
+        return false;
+      }
     }
     
     // 6. Detect martingale pattern
@@ -223,13 +347,22 @@ class FilteredCopyTrader {
       return false;
     }
     
-    // Log decision
+    // Log decision with enhanced details
+    const sourceNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId;
+    const destNickname = this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId;
+
     if (reasons.length > 0) {
-      logger.info(`❌ Skipping trade: ${reasons.join(', ')}`);
+      logger.info(`❌ Trade REJECTED for route ${sourceNickname} → ${destNickname}:`);
+      logger.info(`   Trade ID: ${trade.id}`);
+      logger.info(`   Symbol: ${trade.symbol}`);
+      logger.info(`   Volume: ${trade.volume} lots`);
+      logger.info(`   Rejection reasons:`);
+      reasons.forEach(reason => logger.info(`   - ${reason}`));
+
       // Send Telegram notification about filter rejection
       telegram.notifyFilterRejection(trade, reasons);
     } else {
-      logger.info(`✅ Trade passed all filters`);
+      logger.info(`✅ Trade ${trade.id} PASSED all filters for route ${sourceNickname} → ${destNickname}`);
     }
 
     return reasons.length === 0;
@@ -359,8 +492,15 @@ class FilteredCopyTrader {
       // Detect martingale level
       const martingaleLevel = this.detectMartingaleLevel(sourceTrade);
       
-      logger.info(`📋 Copying trade: ${sourceTrade.symbol} ${sourceTrade.type}`);
-      logger.info(`  Source: ${sourceTrade.volume} lots → Dest: ${destVolume} lots (L${martingaleLevel})`);
+      const sourceNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId;
+      const destNickname = this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId;
+      const multiplier = destVolume / sourceTrade.volume;
+
+      logger.info(`📋 COPYING trade for route ${sourceNickname} → ${destNickname}:`);
+      logger.info(`   Symbol: ${sourceTrade.symbol}`);
+      logger.info(`   Type: ${sourceTrade.type}`);
+      logger.info(`   Source volume: ${sourceTrade.volume} lots`);
+      logger.info(`   Destination volume: ${destVolume} lots (${multiplier.toFixed(2)}x multiplier, L${martingaleLevel})`);;
       tradeTracker.sized(sourceTrade, destVolume, martingaleLevel);
       
       // Prepare trade data
@@ -381,17 +521,32 @@ class FilteredCopyTrader {
       );
       
       if (result.success) {
-        logger.info(`✅ Trade copied successfully: ${result.orderId}`);
+        logger.info(`✅ Trade COPIED SUCCESSFULLY!`);
+        logger.info(`   Order ID: ${result.orderId}`);
+        logger.info(`   Final volume: ${destVolume} lots`);
         tradeTracker.copied(sourceTrade, destVolume, result.orderId);
         this.lastTradeTime = Date.now();
         this.dailyStats.trades++;
+
+        // Create position mapping for exit tracking
+        await positionMapper.createMapping(this.sourceAccountId, sourceTrade.id, {
+          accountId: this.destAccountId,
+          positionId: result.orderId,
+          sourceSymbol: sourceTrade.symbol,
+          destSymbol: sourceTrade.symbol,
+          sourceVolume: sourceTrade.volume,
+          destVolume: destVolume,
+          openTime: sourceTrade.openTime,
+          sourceOpenPrice: sourceTrade.openPrice,
+          destOpenPrice: result.openPrice || sourceTrade.openPrice
+        });
 
         // Send Telegram success notification
         telegram.notifyCopySuccess(sourceTrade, this.destAccountId, {
           orderId: result.orderId,
           volume: destVolume
         });
-        
+
         // Mark this trade as processed
         this.processedTrades.add(sourceTrade.id);
         
@@ -478,6 +633,76 @@ class FilteredCopyTrader {
       return trade.openPrice + tpDistance;
     } else {
       return trade.openPrice - tpDistance;
+    }
+  }
+
+  /**
+   * Copy position exit to destination account
+   */
+  async copyPositionExit(mapping, closeInfo) {
+    try {
+      const sourceNickname = this.routeConfig?.accounts?.[mapping.sourceAccountId]?.nickname || mapping.sourceAccountId;
+      const destNickname = this.routeConfig?.accounts?.[mapping.destAccountId]?.nickname || mapping.destAccountId;
+
+      logger.info(`📋 COPYING EXIT for route ${sourceNickname} → ${destNickname}:`);
+      logger.info(`   Source position: ${mapping.sourcePositionId}`);
+      logger.info(`   Destination position: ${mapping.destPositionId}`);
+      logger.info(`   Close reason: ${closeInfo.reason}`);
+      logger.info(`   Source profit: $${closeInfo.profit?.toFixed(2) || '0.00'}`);
+
+      // Check if destination position is still open
+      const destPositions = await poolClient.getPositions(mapping.destAccountId, this.destRegion);
+      const destPosition = destPositions.find(pos => pos.id === mapping.destPositionId);
+
+      if (!destPosition) {
+        logger.warn(`⚠️ Destination position ${mapping.destPositionId} already closed or not found`);
+        await positionMapper.deleteMapping(mapping.sourceAccountId, mapping.sourcePositionId);
+        return;
+      }
+
+      // Close the destination position
+      const closeResult = await poolClient.closePosition(
+        mapping.destAccountId,
+        this.destRegion,
+        mapping.destPositionId
+      );
+
+      if (closeResult) {
+        const destProfit = destPosition.profit || 0;
+        const profitRatio = mapping.destVolume / mapping.sourceVolume;
+        const expectedProfit = closeInfo.profit * profitRatio;
+
+        logger.info(`✅ EXIT COPIED SUCCESSFULLY!`);
+        logger.info(`   Destination profit: $${destProfit.toFixed(2)}`);
+        logger.info(`   Expected profit: $${expectedProfit.toFixed(2)}`);
+        logger.info(`   Profit variance: ${((destProfit - expectedProfit) / expectedProfit * 100).toFixed(1)}%`);
+
+        // Send telegram notification
+        telegram.notifyExitCopied(mapping, closeInfo, {
+          destProfit,
+          closeReason: closeInfo.reason
+        });
+
+        // Record the close for tracking
+        await positionMapper.recordPositionClose(
+          mapping.sourceAccountId,
+          mapping.sourcePositionId,
+          {
+            ...closeInfo,
+            destProfit,
+            destCloseTime: new Date().toISOString()
+          }
+        );
+
+        // Delete the mapping
+        await positionMapper.deleteMapping(mapping.sourceAccountId, mapping.sourcePositionId);
+      } else {
+        logger.error(`❌ Failed to copy exit for position ${mapping.destPositionId}`);
+        telegram.notifyExitCopyFailure(mapping, 'Failed to close position');
+      }
+    } catch (error) {
+      logger.error('Error copying position exit:', error);
+      telegram.notifyExitCopyFailure(mapping, error.message);
     }
   }
 

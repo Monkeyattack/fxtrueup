@@ -126,6 +126,68 @@ ${filterList}
 
     await this.sendMessage(message);
   }
+
+  /**
+   * Notify position exit detected
+   */
+  async notifyExitDetected(position, sourceAccount, closeInfo) {
+    const message = `<b>📉 POSITION EXIT DETECTED</b>
+
+<b>Source:</b> ${sourceAccount.substring(0, 8)}...
+<b>Position:</b> ${position.id}
+<b>Symbol:</b> ${position.symbol}
+<b>Volume:</b> ${position.volume} lots
+<b>Close Reason:</b> ${closeInfo.reason}
+<b>Profit:</b> $${closeInfo.profit?.toFixed(2) || '0.00'}
+<b>Close Time:</b> ${closeInfo.closeTime}
+
+<i>Checking for mapped positions...</i>`;
+
+    await this.sendMessage(message);
+  }
+
+  /**
+   * Notify successful exit copy
+   */
+  async notifyExitCopied(mapping, closeInfo, result) {
+    const message = `<b>✅ EXIT COPIED SUCCESSFULLY</b>
+
+<b>Route:</b> ${mapping.sourceAccountId.substring(0, 8)}... → ${mapping.destAccountId.substring(0, 8)}...
+<b>Symbol:</b> ${mapping.sourceSymbol}
+
+<b>Source Exit:</b>
+• Volume: ${mapping.sourceVolume} lots
+• Profit: $${closeInfo.profit?.toFixed(2) || '0.00'}
+• Reason: ${closeInfo.reason}
+
+<b>Destination Exit:</b>
+• Volume: ${mapping.destVolume} lots
+• Profit: $${result.destProfit?.toFixed(2) || '0.00'}
+• P&L Variance: ${((result.destProfit - (closeInfo.profit * mapping.destVolume / mapping.sourceVolume)) / (closeInfo.profit * mapping.destVolume / mapping.sourceVolume) * 100).toFixed(1)}%
+
+<b>Exit Time:</b> ${new Date().toISOString()}`;
+
+    await this.sendMessage(message);
+  }
+
+  /**
+   * Notify exit copy failure
+   */
+  async notifyExitCopyFailure(mapping, error) {
+    const message = `<b>❌ EXIT COPY FAILED</b>
+
+<b>Route:</b> ${mapping.sourceAccountId.substring(0, 8)}... → ${mapping.destAccountId.substring(0, 8)}...
+<b>Symbol:</b> ${mapping.sourceSymbol}
+<b>Source Position:</b> ${mapping.sourcePositionId}
+<b>Dest Position:</b> ${mapping.destPositionId}
+<b>Error:</b> ${error}
+
+<b>Time:</b> ${new Date().toISOString()}
+
+<i>⚠️ Manual intervention may be required</i>`;
+
+    await this.sendMessage(message);
+  }
 }
 
 // Export singleton instance

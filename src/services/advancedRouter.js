@@ -90,7 +90,8 @@ class AdvancedRouter {
       route.source,
       route.destination,
       dest.region,
-      source.region
+      source.region,
+      this.config
     );
 
     // Apply rule set configuration

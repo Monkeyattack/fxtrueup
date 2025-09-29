@@ -72,7 +72,8 @@
       "Bash(pm2 delete:*)",
       "Bash(vault read:*)",
       "Bash(./run-all-tests.sh)",
-      "Bash(./run-basic-tests.sh:*)"
+      "Bash(./run-basic-tests.sh:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "additionalDirectories": [

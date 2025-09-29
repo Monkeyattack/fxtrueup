@@ -142,3 +142,5 @@ If changes are accidentally made via SSH:
 
 ---
 Last Updated: 2025-08-09
+- remember how to reploy to vault
+- remember how to deploy to vault
