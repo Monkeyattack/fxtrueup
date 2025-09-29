@@ -4,13 +4,13 @@
  */
 
 import Redis from 'ioredis';
-import VaultManager from './vaultConfig.js';
+import { vaultManager } from './vaultConfig.js';
 import { logger } from '../utils/logger.js';
 
 class RedisManager {
   constructor() {
     this.client = null;
-    this.vaultManager = new VaultManager();
+    this.vaultManager = vaultManager;
     this.connected = false;
   }
 
