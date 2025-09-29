@@ -216,10 +216,10 @@
     {
       "id": "route_001",
       "enabled": true,
-      "name": "PropFirmKid to GridDemo",
+      "name": "PropFirmKid to GoldEADemo",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
-      "destination": "019ec0f0-09f5-4230-a7bd-fa2930af07a4",
-      "ruleSet": "proportional_118x",
+      "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
+      "ruleSet": "conservative_05x",
       "description": "Main prop firm copy with proportional sizing",
       "notifications": {
         "onCopy": true,
@@ -231,9 +231,9 @@
     {
       "id": "route_002",
       "enabled": true,
-      "name": "GoldOnly to GridDemo",
+      "name": "GoldOnly to GoldEADemo",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
-      "destination": "019ec0f0-09f5-4230-a7bd-fa2930af07a4",
+      "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
       "ruleSet": "aggressive_dynamic",
       "description": "Micro lot gold strategy scaled to standard lots",
       "notifications": {

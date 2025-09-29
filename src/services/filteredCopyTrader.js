@@ -410,8 +410,8 @@ class FilteredCopyTrader {
    * Calculate position size with proportional scaling
    */
   calculatePositionSize(sourceLots) {
-    // PropFirmKid ($100k) → Grid Demo ($118k) = 1.18x multiplier
-    const accountSizeMultiplier = 1.18;
+    // Use configured multiplier from rule set
+    const accountSizeMultiplier = this.config.multiplier || 1.0;
 
     // Calculate proportional lot size
     let destLots = sourceLots * accountSizeMultiplier;
