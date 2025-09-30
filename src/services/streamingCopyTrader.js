@@ -21,6 +21,7 @@ class StreamingCopyTrader {
     // Tracking state
     this.sourcePositions = new Map();
     this.processedTrades = new Set();
+    this.positionMapping = new Map(); // Maps source position ID to dest position ID
     this.isConnected = false;
     this.lastHeartbeat = Date.now();
 
@@ -67,7 +68,7 @@ class StreamingCopyTrader {
       await this.account.waitConnected();
 
       // Create streaming connection
-      this.connection = account.getStreamingConnection();
+      this.connection = this.account.getStreamingConnection();
 
       // Add event listeners
       this.connection.addSynchronizationListener({
@@ -92,7 +93,8 @@ class StreamingCopyTrader {
         },
 
         onPositionRemoved: async (position) => {
-          logger.info(`📉 Position closed: ${position.symbol}`);
+          logger.info(`📉 Position closed on source: ${position.symbol} (ID: ${position.id})`);
+          await this.handlePositionClose(position);
           this.sourcePositions.delete(position.id);
         },
 
@@ -176,7 +178,11 @@ class StreamingCopyTrader {
       if (result.success) {
         this.dailyStats.trades++;
         this.dailyStats.lastTradeTime = Date.now();
+
+        // Map source position to destination position for close tracking
+        this.positionMapping.set(deal.positionId, result.positionId || result.orderId);
         logger.info(`✅ Trade copied successfully: ${result.orderId}`);
+        logger.info(`📌 Position mapped: ${deal.positionId} → ${result.positionId || result.orderId}`);
       } else {
         logger.error(`❌ Failed to copy trade: ${result.error}`);
       }
@@ -198,6 +204,53 @@ class StreamingCopyTrader {
       if (position.profit < 0) {
         this.dailyStats.loss = Math.abs(position.profit);
       }
+    }
+  }
+
+  /**
+   * Handle position close - automatically close the copied position
+   */
+  async handlePositionClose(sourcePosition) {
+    try {
+      // Check if we have a mapped destination position
+      const destPositionId = this.positionMapping.get(sourcePosition.id);
+
+      if (!destPositionId) {
+        logger.info(`⚠️  No mapped destination position found for source position ${sourcePosition.id}`);
+        return;
+      }
+
+      logger.info(`🔄 Closing destination position ${destPositionId} (source: ${sourcePosition.id})`);
+
+      // Close the position on destination account
+      const result = await poolClient.closePosition(
+        this.destAccountId,
+        this.destRegion,
+        destPositionId
+      );
+
+      if (result.success) {
+        logger.info(`✅ Destination position closed successfully: ${destPositionId}`);
+
+        // Update P&L tracking
+        if (result.profit) {
+          if (result.profit > 0) {
+            this.dailyStats.profit += result.profit;
+          } else {
+            this.dailyStats.loss += Math.abs(result.profit);
+          }
+        }
+
+        // Clean up mapping
+        this.positionMapping.delete(sourcePosition.id);
+      } else {
+        logger.error(`❌ Failed to close destination position: ${result.error}`);
+        // Keep the mapping in case we want to retry
+      }
+
+    } catch (error) {
+      logger.error('Error handling position close:', error);
+      // Don't throw - we don't want to crash the whole copy trader
     }
   }
 

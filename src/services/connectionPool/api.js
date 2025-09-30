@@ -138,9 +138,14 @@ app.get('/accounts/:account_id/info', async (req, res) => {
 app.post('/position/close', async (req, res) => {
   try {
     const { account_id, region = 'new-york', position_id } = req.body;
-    
-    const success = await pool.closePosition(account_id, region, position_id);
-    res.json({ success, message: success ? 'Position closed' : 'Failed to close position' });
+
+    const result = await pool.closePosition(account_id, region, position_id);
+    res.json({
+      success: result.success,
+      profit: result.profit,
+      order_id: result.orderId,
+      message: result.success ? 'Position closed' : result.error || 'Failed to close position'
+    });
   } catch (err) {
     console.error('Close position error:', err);
     res.status(500).json({ 

@@ -42,9 +42,20 @@ export const ACCOUNT_CONFIGS = {
   PROP_FIRM_50K: {
     id: '166bea1c-306e-4a6a-8720-823a0134474f',
     name: 'Prop Firm Demo $50k',
-    region: 'new-york', 
+    region: 'new-york',
     type: 'demo',
     description: 'MT5 prop firm demo account'
+  },
+
+  // FTMO Challenge 100k
+  FTMO_CHALLENGE_100K: {
+    id: 'bb106d21-d303-4e06-84fd-e6a21d20cec9',
+    name: 'FTMO Challange 100k 551',
+    region: 'london',
+    type: 'target',
+    description: 'FTMO Challenge Phase $100k - MT5 (FTMO-Server4)',
+    login: '540289551',
+    balance: 100000
   }
 };
 
@@ -52,6 +63,7 @@ export const ACCOUNT_CONFIGS = {
 export const GOLD_ACCOUNT_ID = ACCOUNT_CONFIGS.GOLD_BUY_ONLY.id;
 export const GRID_ACCOUNT_ID = ACCOUNT_CONFIGS.GRID_DEMO.id;
 export const PROP_FIRMKID_EA_ID = ACCOUNT_CONFIGS.PROP_FIRMKID_EA.id;
+export const FTMO_CHALLENGE_100K_ID = ACCOUNT_CONFIGS.FTMO_CHALLENGE_100K.id;
 
 // Get all account IDs
 export function getAllAccountIds() {

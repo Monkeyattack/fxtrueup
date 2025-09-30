@@ -172,10 +172,17 @@ class PoolClient {
         region: region,
         position_id: positionId
       });
-      return response.data.success;
+      return {
+        success: response.data.success,
+        profit: response.data.profit || 0,
+        orderId: response.data.order_id
+      };
     } catch (error) {
       logger.error(`Failed to close position: ${error.message}`);
-      return false;
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 

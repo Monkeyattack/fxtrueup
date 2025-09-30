@@ -627,7 +627,7 @@ class FilteredCopyTrader {
         mapping.destPositionId
       );
 
-      if (closeResult) {
+      if (closeResult.success) {
         const destProfit = destPosition.profit || 0;
         const profitRatio = mapping.destVolume / mapping.sourceVolume;
         const expectedProfit = closeInfo.profit * profitRatio;

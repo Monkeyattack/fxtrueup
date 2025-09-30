@@ -204,12 +204,26 @@ class ConnectionPool extends EventEmitter {
   async closePosition(accountId, region, positionId) {
     try {
       const connection = await this.getConnection(accountId, region);
+
+      // Get position info before closing to capture profit
+      const positions = await connection.getPositions();
+      const position = positions.find(p => p.id === positionId);
+      const profit = position ? position.profit : 0;
+
       const result = await connection.closePosition(positionId);
-      console.log(`✅ Position ${positionId} closed`);
-      return true;
+      console.log(`✅ Position ${positionId} closed with profit: $${profit}`);
+
+      return {
+        success: true,
+        profit: profit,
+        orderId: result.orderId
+      };
     } catch (err) {
       console.error(`❌ Failed to close position:`, err.message);
-      return false;
+      return {
+        success: false,
+        error: err.message
+      };
     }
   }
   
