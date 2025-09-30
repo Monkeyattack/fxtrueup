@@ -22,7 +22,24 @@
       "type": "destination",
       "platform": "mt5",
       "balance": 118000,
-      "broker": "ICMarkets"
+      "broker": "ICMarkets",
+      "propFirmSettings": {
+        "propFirmType": "Tiger Funded",
+        "challengePhase": "challenge",
+        "accountSize": 118000,
+        "startingBalance": 118000,
+        "maxTotalDrawdown": 11800,
+        "maxTotalDrawdownPercent": 10,
+        "maxDailyDrawdown": 5900,
+        "maxDailyDrawdownPercent": 5,
+        "drawdownCalculationMethod": "initial_balance",
+        "trackFloatingDrawdown": true,
+        "requireStopLoss": false,
+        "allowedSymbols": ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "US30", "NAS100"],
+        "prohibitedStrategies": ["high_frequency", "news_trading"],
+        "eaTradingAllowed": true,
+        "eaTradingDisclosed": true
+      }
     },
     "166bea1c-306e-4a6a-8720-823a0134474f": {
       "nickname": "PropFirm50k",
@@ -30,7 +47,53 @@
       "type": "destination",
       "platform": "mt5",
       "balance": 50000,
-      "broker": "FTMO"
+      "broker": "FTMO",
+      "propFirmSettings": {
+        "propFirmType": "FTMO",
+        "challengePhase": "challenge",
+        "accountSize": 50000,
+        "startingBalance": 50000,
+        "maxTotalDrawdown": 5000,
+        "maxTotalDrawdownPercent": 10,
+        "maxDailyDrawdown": 2500,
+        "maxDailyDrawdownPercent": 5,
+        "drawdownCalculationMethod": "balance",
+        "trackFloatingDrawdown": true,
+        "requireStopLoss": true,
+        "allowedSymbols": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "XAUUSD", "XAGUSD", "US30", "NAS100", "SPX500"],
+        "prohibitedStrategies": ["martingale", "grid", "hedging", "arbitrage"],
+        "eaTradingAllowed": true,
+        "eaTradingDisclosed": true
+      }
+    },
+    "bb106d21-d303-4e06-84fd-e6a21d20cec9": {
+      "nickname": "FTMO Challenge 100k 551",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 100000,
+      "broker": "FTMO",
+      "login": "540289551",
+      "propFirmSettings": {
+        "propFirmType": "FTMO",
+        "challengePhase": "1-step-challenge",
+        "accountSize": 100000,
+        "startingBalance": 100000,
+        "maxTotalDrawdown": 10000,
+        "maxTotalDrawdownPercent": 10,
+        "maxDailyDrawdown": 5000,
+        "maxDailyDrawdownPercent": 5,
+        "profitTarget": 10000,
+        "profitTargetPercent": 10,
+        "minTradingDays": 0,
+        "drawdownCalculationMethod": "balance",
+        "trackFloatingDrawdown": true,
+        "requireStopLoss": false,
+        "allowedSymbols": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "XAUUSD", "XAGUSD", "US30", "NAS100", "SPX500"],
+        "prohibitedStrategies": ["martingale", "grid", "hedging", "arbitrage"],
+        "eaTradingAllowed": true,
+        "eaTradingDisclosed": true
+      }
     },
     "d25b9ece-3422-43e8-a59b-cf85246beb3b": {
       "nickname": "GoldEADemo",
@@ -128,6 +191,129 @@
         "losing": { "decrement": 0.2, "min": 0.5 }
       },
       "filters": ["risk_adjusted", "correlation_check"]
+    },
+
+    "ftmo_standard_100k": {
+      "name": "FTMO Standard 100k",
+      "description": "FTMO-compliant rule set for $100k challenge",
+      "type": "proportional",
+      "multiplier": 1.0,
+      "roundingMode": "nearest_0.01",
+      "maxDailyTrades": 10,
+      "maxDailyLoss": 5000,
+      "maxTotalDrawdown": 10000,
+      "minTimeBetweenTrades": 600000,
+      "maxOpenPositions": 3,
+      "trackFloatingDrawdown": true,
+      "filters": [
+        "no_martingale",
+        "no_hedging",
+        "require_stop_loss",
+        "symbol_whitelist",
+        "max_position_size_2pct",
+        "no_weekend",
+        "high_frequency_prevention",
+        "source_streak_breaker"
+      ],
+      "stopLossAdjustment": 0,
+      "takeProfitAdjustment": 0
+    },
+
+    "ftmo_standard_50k": {
+      "name": "FTMO Standard 50k",
+      "description": "FTMO-compliant rule set for $50k challenge",
+      "type": "proportional",
+      "multiplier": 1.0,
+      "roundingMode": "nearest_0.01",
+      "maxDailyTrades": 10,
+      "maxDailyLoss": 2500,
+      "maxTotalDrawdown": 5000,
+      "minTimeBetweenTrades": 600000,
+      "maxOpenPositions": 3,
+      "trackFloatingDrawdown": true,
+      "filters": [
+        "no_martingale",
+        "no_hedging",
+        "require_stop_loss",
+        "symbol_whitelist",
+        "max_position_size_2pct",
+        "no_weekend",
+        "high_frequency_prevention"
+      ],
+      "stopLossAdjustment": 0,
+      "takeProfitAdjustment": 0
+    },
+
+    "tiger_funded_118k": {
+      "name": "Tiger Funded 118k Challenge",
+      "description": "Tiger Funded-compliant for $118k 2-step challenge",
+      "type": "proportional",
+      "multiplier": 1.0,
+      "roundingMode": "nearest_0.01",
+      "maxDailyTrades": 15,
+      "maxDailyLoss": 5900,
+      "maxTotalDrawdown": 11800,
+      "minTimeBetweenTrades": 300000,
+      "maxOpenPositions": 5,
+      "trackFloatingDrawdown": true,
+      "filters": [
+        "no_martingale",
+        "symbol_whitelist",
+        "max_position_size_2pct",
+        "no_weekend",
+        "high_frequency_prevention",
+        "no_news_trading"
+      ],
+      "stopLossAdjustment": 0,
+      "takeProfitAdjustment": 0
+    },
+
+    "tiger_funded_50k": {
+      "name": "Tiger Funded 50k Challenge",
+      "description": "Tiger Funded-compliant for $50k 2-step challenge",
+      "type": "proportional",
+      "multiplier": 1.0,
+      "roundingMode": "nearest_0.01",
+      "maxDailyTrades": 15,
+      "maxDailyLoss": 2500,
+      "maxTotalDrawdown": 5000,
+      "minTimeBetweenTrades": 300000,
+      "maxOpenPositions": 5,
+      "trackFloatingDrawdown": true,
+      "filters": [
+        "no_martingale",
+        "symbol_whitelist",
+        "max_position_size_2pct",
+        "no_weekend",
+        "high_frequency_prevention"
+      ],
+      "stopLossAdjustment": 0,
+      "takeProfitAdjustment": 0
+    },
+
+    "alpha_capital_100k": {
+      "name": "Alpha Capital 100k",
+      "description": "Alpha Capital Group-compliant for $100k",
+      "type": "proportional",
+      "multiplier": 1.0,
+      "roundingMode": "nearest_0.01",
+      "maxDailyTrades": 12,
+      "maxDailyLoss": 4000,
+      "maxTotalDrawdown": 8000,
+      "minTimeBetweenTrades": 600000,
+      "maxOpenPositions": 4,
+      "trackFloatingDrawdown": true,
+      "filters": [
+        "no_martingale",
+        "no_hedging",
+        "symbol_whitelist",
+        "max_position_size_2pct",
+        "no_weekend",
+        "high_frequency_prevention",
+        "source_streak_breaker"
+      ],
+      "stopLossAdjustment": 0,
+      "takeProfitAdjustment": 0
     }
   },
 
@@ -209,6 +395,73 @@
       "type": "correlation_filter",
       "maxCorrelation": 0.7,
       "checkExisting": true
+    },
+    "require_stop_loss": {
+      "name": "Require Stop Loss",
+      "description": "Only copy trades that have a stop loss set",
+      "type": "stop_loss_filter",
+      "requireSL": true,
+      "minSLDistance": 10,
+      "maxSLDistance": 200
+    },
+    "symbol_whitelist": {
+      "name": "Symbol Whitelist",
+      "description": "Only trade allowed symbols",
+      "type": "symbol_filter",
+      "mode": "whitelist",
+      "symbols": ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "US30", "NAS100"]
+    },
+    "no_news_trading": {
+      "name": "No News Trading",
+      "description": "Avoid trading around high-impact news events",
+      "type": "news_filter",
+      "newsBufferMinutes": 30,
+      "highImpactOnly": true,
+      "newsEvents": ["NFP", "FOMC", "CPI", "GDP", "Interest Rate Decision"]
+    },
+    "max_position_size_2pct": {
+      "name": "Max 2% Position Size",
+      "description": "Limit position size to 2% of account",
+      "type": "position_size_filter",
+      "maxRiskPercent": 2.0,
+      "calculationMethod": "account_balance"
+    },
+    "no_hedging": {
+      "name": "No Hedging",
+      "description": "Prevent opening opposite positions on same symbol",
+      "type": "hedging_filter",
+      "allowOpposingPositions": false,
+      "checkExisting": true
+    },
+    "high_frequency_prevention": {
+      "name": "High Frequency Prevention",
+      "description": "Prevent high-frequency trading patterns",
+      "type": "frequency_filter",
+      "maxTradesPerHour": 3,
+      "maxTradesPerDay": 20,
+      "minPositionHoldTime": 300000
+    },
+    "source_streak_breaker": {
+      "name": "Source Streak Breaker",
+      "description": "Pause copying after consecutive losses from source",
+      "type": "source_performance_filter",
+      "maxConsecutiveSourceLosses": 3,
+      "cooldownMinutes": 120,
+      "trackSourceAccount": true
+    },
+    "max_lot_size": {
+      "name": "Maximum Lot Size",
+      "description": "Absolute maximum lot size per position",
+      "type": "lot_size_filter",
+      "maxLots": 5.0,
+      "minLots": 0.01
+    },
+    "max_total_exposure": {
+      "name": "Maximum Total Exposure",
+      "description": "Limit total notional value of all open positions",
+      "type": "exposure_filter",
+      "maxTotalExposurePercent": 50,
+      "calculationMethod": "notional_value"
     }
   },
 
@@ -317,6 +570,21 @@
         "onFilter": true,
         "channel": "telegram"
       }
+    },
+    {
+      "id": "route_008",
+      "enabled": true,
+      "name": "PropFirmKid to FTMO Challenge 100k",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
+      "ruleSet": "ftmo_standard_100k",
+      "description": "Main EA to FTMO 1-step challenge with full compliance",
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": true,
+        "channel": "telegram"
+      }
     }
   ],
 
@@ -334,6 +602,49 @@
       "interval": 60000,
       "timeout": 5000,
       "retries": 3
+    },
+    "breachProtection": {
+      "enabled": true,
+      "trackFloatingDrawdown": true,
+      "drawdownCalculationMethod": "equity",
+      "dailyLossAction": "stop_new",
+      "totalDrawdownAction": "close_all",
+      "breachWarningThreshold": 0.8,
+      "notifyBeforeBreach": true,
+      "cooldownPeriod": 86400000,
+      "autoResumeAfterCooldown": false,
+      "manualReviewRequired": true
+    },
+    "copyTrading": {
+      "maxCopyDelayMs": 5000,
+      "requireSourceSyncBeforeCopy": true,
+      "inheritTPSL": true,
+      "allowPartialFills": false,
+      "retryFailedCopies": true,
+      "maxRetries": 3,
+      "retryDelayMs": 2000
+    },
+    "eaCompliance": {
+      "requireEADisclosure": true,
+      "maxEAPositionsPerRoute": 10,
+      "trackEAVersion": true,
+      "pauseOnEAError": true,
+      "minSourceAccountAge": 30
+    },
+    "riskManagement": {
+      "maxLeverageAllowed": 100,
+      "requireDiversification": true,
+      "maxCorrelatedPositions": 2,
+      "maxDrawdownBeforeAlert": 0.05,
+      "maxSingleSymbolExposure": 0.3,
+      "forceCloseAtDrawdown": 0.09
+    },
+    "tradingRestrictions": {
+      "allowWeekendTrading": false,
+      "allowHolidayTrading": false,
+      "marketHolidays": ["2025-01-01", "2025-12-25"],
+      "requiredMinimumBalance": 1000,
+      "maxPositionHoldDays": 30
     }
   }
 }

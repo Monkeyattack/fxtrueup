@@ -4,9 +4,34 @@
 
 import dotenv from 'dotenv';
 import { createMultiCopyService } from './multiCopyService.js';
-import COPY_ROUTES from '../config/copy-routes.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+async function loadRoutesFromConfig() {
+  try {
+    const configPath = path.join(__dirname, '../config/routing-config.json');
+    const configData = await fs.readFile(configPath, 'utf8');
+    const config = JSON.parse(configData);
+
+    // Convert routing-config.json routes to legacy format
+    return config.routes
+      .filter(r => r.enabled)
+      .map(r => ({
+        sourceId: r.source,
+        destId: r.destination,
+        destRegion: config.accounts[r.destination]?.region || 'new-york',
+        ruleSet: r.ruleSet
+      }));
+  } catch (err) {
+    console.error('Failed to load routing-config.json:', err.message);
+    return [];
+  }
+}
 
 function parseRoutesFromEnv() {
   const raw = process.env.COPY_ROUTES; // JSON string or empty
@@ -21,9 +46,9 @@ function parseRoutesFromEnv() {
 }
 
 async function main() {
-  const routes = parseRoutesFromEnv() || COPY_ROUTES;
+  const routes = parseRoutesFromEnv() || await loadRoutesFromConfig();
   if (!routes || routes.length === 0) {
-    console.error('No routes configured. Set COPY_ROUTES env var or edit src/config/copy-routes.js');
+    console.error('No routes configured. Set COPY_ROUTES env var or configure routes in src/config/routing-config.json');
     process.exit(1);
   }
 

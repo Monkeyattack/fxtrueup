@@ -22,7 +22,10 @@ class FilteredCopyTrader {
     this.sourcePositions = new Map(); // Track source positions
     this.processedTrades = new Set(); // Track which trades we've processed
     this.activeMartingaleCycles = new Map(); // Track martingale sequences
+    this.recentTradesBySymbol = new Map(); // Track recent trades per symbol for martingale detection
+    this.consecutiveSourceLosses = 0; // Track source account losing streak
     this.lastTradeTime = 0;
+    this.tradeTimestamps = []; // Track timestamps for frequency checking
     this.dailyStats = {
       date: new Date().toDateString(),
       trades: 0,
@@ -253,37 +256,37 @@ class FilteredCopyTrader {
       logger.debug(`⏭️ Skipping trade ${trade.id} - already processed (${this.processedTrades.size} trades in set)`);
       return false; // Silent skip - already processed
     }
-    
+
     // 2. Check daily loss limit
     if (this.dailyStats.dailyLoss >= this.config.dailyLossLimit * 0.8) {
       reasons.push('Approaching daily loss limit');
       tradeTracker.rejected(trade, reasons);
       return false;
     }
-    
+
     // 3. Check concurrent martingale cycles
     if (this.activeMartingaleCycles.size >= this.config.maxConcurrentCycles) {
       reasons.push('Max martingale cycles reached');
       tradeTracker.rejected(trade, reasons);
       return false;
     }
-    
-    // 3. Check time since last trade
+
+    // 4. Check time since last trade
     const timeSinceLastTrade = Date.now() - this.lastTradeTime;
     if (timeSinceLastTrade < this.config.minTimeBetweenTrades) {
       reasons.push('Too soon after last trade');
       tradeTracker.rejected(trade, reasons);
       return false;
     }
-    
-    // 4. Check daily trade limit
+
+    // 5. Check daily trade limit
     if (this.dailyStats.trades >= this.config.maxDailyTrades) {
       reasons.push('Daily trade limit reached');
       tradeTracker.rejected(trade, reasons);
       return false;
     }
-    
-    // 5. Check trading hours (skip if allowedHours is empty)
+
+    // 6. Check trading hours (skip if allowedHours is empty)
     if (this.config.allowedHours.length > 0) {
       const hour = new Date().getUTCHours();
       if (!this.config.allowedHours.includes(hour)) {
@@ -292,19 +295,32 @@ class FilteredCopyTrader {
         return false;
       }
     }
-    
-    // 6. Detect martingale pattern
+
+    // 7. Detect martingale pattern
     if (this.isMartingalePattern(trade)) {
       reasons.push('Martingale pattern detected');
       tradeTracker.rejected(trade, reasons);
       return false;
     }
-    
-    // 7. Check for grid pattern (multiple positions at similar prices)
+
+    // 8. Check for grid pattern (multiple positions at similar prices)
     if (await this.isGridPattern(trade)) {
       reasons.push('Grid pattern detected');
       tradeTracker.rejected(trade, reasons);
       return false;
+    }
+
+    // ===== JSON CONFIG FILTER ENFORCEMENT =====
+    // Apply filters from routing-config.json if activeFilters is configured
+    if (this.config.activeFilters && Array.isArray(this.config.activeFilters)) {
+      for (const filter of this.config.activeFilters) {
+        const filterResult = await this.applyFilter(filter, trade);
+        if (!filterResult.passed) {
+          reasons.push(filterResult.reason);
+          tradeTracker.rejected(trade, reasons);
+          return false;
+        }
+      }
     }
     
     // Log decision with enhanced details
@@ -329,22 +345,55 @@ class FilteredCopyTrader {
   }
 
   /**
-   * Detect martingale pattern
+   * Detect martingale pattern - repeated opens on same symbol with escalating lot sizes
    */
   isMartingalePattern(trade) {
-    // Check if position size is larger than expected base size
-    // PropFirmKid typically trades 0.85-1.0 lots as base size
-    // Martingale would be 1.7+ lots (2x base) or higher
-    const baseSize = 1.0; // Expected base lot size for PropFirmKid
-    const martingaleThreshold = baseSize * 1.7; // 170% of base = likely martingale
+    const symbol = trade.symbol;
 
-    if (trade.volume > martingaleThreshold) {
-      logger.info(`⚠️ Martingale pattern detected: ${trade.volume} lots > ${martingaleThreshold} threshold`);
+    // Get recent trades for this symbol
+    if (!this.recentTradesBySymbol.has(symbol)) {
+      this.recentTradesBySymbol.set(symbol, []);
+    }
+
+    const symbolTrades = this.recentTradesBySymbol.get(symbol);
+
+    // Clean up trades older than 1 hour
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    const recentTrades = symbolTrades.filter(t => t.timestamp > oneHourAgo);
+    this.recentTradesBySymbol.set(symbol, recentTrades);
+
+    // Check if we have recent trades on same symbol
+    if (recentTrades.length === 0) {
+      // First trade on this symbol, record it
+      recentTrades.push({ volume: trade.volume, timestamp: Date.now(), type: trade.type });
+      return false;
+    }
+
+    // Check for escalating lot sizes (martingale pattern)
+    const lastTrade = recentTrades[recentTrades.length - 1];
+
+    // Same direction and increasing volume = martingale
+    if (lastTrade.type === trade.type && trade.volume > lastTrade.volume * 1.5) {
+      logger.info(`⚠️ Martingale pattern detected on ${symbol}:`);
+      logger.info(`   Previous: ${lastTrade.volume} lots`);
+      logger.info(`   Current: ${trade.volume} lots (${((trade.volume / lastTrade.volume - 1) * 100).toFixed(1)}% increase)`);
+      logger.info(`   Pattern: Repeated opens with escalating size`);
       return true;
     }
 
-    // Check recent trade history for losses followed by larger positions
-    // This would need trade history analysis
+    // Check for rapid-fire same direction trades (3+ in 30 min)
+    const thirtyMinAgo = Date.now() - (30 * 60 * 1000);
+    const rapidTrades = recentTrades.filter(t =>
+      t.timestamp > thirtyMinAgo && t.type === trade.type
+    );
+
+    if (rapidTrades.length >= 2) {
+      logger.info(`⚠️ Potential martingale: ${rapidTrades.length + 1} ${trade.type} trades on ${symbol} in 30 minutes`);
+      // Don't reject yet, but log it
+    }
+
+    // Record this trade
+    recentTrades.push({ volume: trade.volume, timestamp: Date.now(), type: trade.type });
 
     return false;
   }
@@ -485,7 +534,11 @@ class FilteredCopyTrader {
         logger.info(`   Order ID: ${result.orderId}`);
         logger.info(`   Final volume: ${destVolume} lots`);
         tradeTracker.copied(sourceTrade, destVolume, result.orderId);
-        this.lastTradeTime = Date.now();
+
+        // Update tracking
+        const now = Date.now();
+        this.lastTradeTime = now;
+        this.tradeTimestamps.push(now); // For frequency filter
         this.dailyStats.trades++;
 
         // Create position mapping for exit tracking
@@ -664,6 +717,245 @@ class FilteredCopyTrader {
       logger.error('Error copying position exit:', error);
       telegram.notifyExitCopyFailure(mapping, error.message);
     }
+  }
+
+  /**
+   * Apply individual filter from routing-config.json
+   */
+  async applyFilter(filter, trade) {
+    const type = filter.type;
+
+    try {
+      switch (type) {
+        case 'stop_loss_filter':
+          return this.checkStopLossFilter(filter, trade);
+
+        case 'symbol_filter':
+          return this.checkSymbolFilter(filter, trade);
+
+        case 'hedging_filter':
+          return await this.checkHedgingFilter(filter, trade);
+
+        case 'frequency_filter':
+          return this.checkFrequencyFilter(filter, trade);
+
+        case 'source_performance_filter':
+          return this.checkSourceStreakFilter(filter, trade);
+
+        case 'position_size_filter':
+          return await this.checkPositionSizeFilter(filter, trade);
+
+        case 'news_filter':
+          return this.checkNewsFilter(filter, trade);
+
+        case 'lot_size_filter':
+          return this.checkLotSizeFilter(filter, trade);
+
+        case 'exposure_filter':
+          return await this.checkExposureFilter(filter, trade);
+
+        default:
+          logger.warn(`Unknown filter type: ${type}`);
+          return { passed: true, reason: null };
+      }
+    } catch (error) {
+      logger.error(`Error applying filter ${filter.name}:`, error);
+      return { passed: true, reason: null }; // Fail open on errors
+    }
+  }
+
+  /**
+   * Check if trade has required stop loss
+   */
+  checkStopLossFilter(filter, trade) {
+    if (!filter.requireSL) return { passed: true };
+
+    if (!trade.stopLoss || trade.stopLoss === 0) {
+      return { passed: false, reason: `Stop loss required but not set (${filter.name})` };
+    }
+
+    // Check SL distance if configured
+    const slDistance = Math.abs(trade.openPrice - trade.stopLoss);
+    const slPips = trade.symbol.includes('JPY') ? slDistance * 100 : slDistance * 10000;
+
+    if (filter.minSLDistance && slPips < filter.minSLDistance) {
+      return { passed: false, reason: `Stop loss too tight: ${slPips.toFixed(1)} pips < ${filter.minSLDistance} min` };
+    }
+
+    if (filter.maxSLDistance && slPips > filter.maxSLDistance) {
+      return { passed: false, reason: `Stop loss too wide: ${slPips.toFixed(1)} pips > ${filter.maxSLDistance} max` };
+    }
+
+    return { passed: true };
+  }
+
+  /**
+   * Check if symbol is in whitelist
+   */
+  checkSymbolFilter(filter, trade) {
+    if (filter.mode === 'whitelist' && filter.symbols) {
+      if (!filter.symbols.includes(trade.symbol)) {
+        return { passed: false, reason: `Symbol ${trade.symbol} not in whitelist` };
+      }
+    }
+    return { passed: true };
+  }
+
+  /**
+   * Check for hedging (opposite positions on same symbol)
+   */
+  async checkHedgingFilter(filter, trade) {
+    if (filter.allowOpposingPositions) return { passed: true };
+
+    const destPositions = await poolClient.getPositions(this.destAccountId, this.destRegion);
+    const oppositeDirection = trade.type === 'POSITION_TYPE_BUY' ? 'POSITION_TYPE_SELL' : 'POSITION_TYPE_BUY';
+
+    const hasOpposite = destPositions.some(pos =>
+      pos.symbol === trade.symbol && pos.type === oppositeDirection
+    );
+
+    if (hasOpposite) {
+      return { passed: false, reason: `Hedging not allowed - opposite ${trade.symbol} position exists` };
+    }
+
+    return { passed: true };
+  }
+
+  /**
+   * Check high-frequency trading limits
+   */
+  checkFrequencyFilter(filter, trade) {
+    const now = Date.now();
+
+    // Clean old timestamps
+    this.tradeTimestamps = this.tradeTimestamps.filter(ts => now - ts < 3600000); // 1 hour
+
+    // Check trades per hour
+    if (filter.maxTradesPerHour) {
+      const hourAgo = now - 3600000;
+      const recentTrades = this.tradeTimestamps.filter(ts => ts > hourAgo);
+      if (recentTrades.length >= filter.maxTradesPerHour) {
+        return { passed: false, reason: `Exceeded ${filter.maxTradesPerHour} trades/hour limit` };
+      }
+    }
+
+    // Check trades per day (already handled by maxDailyTrades, but double-check)
+    if (filter.maxTradesPerDay && this.dailyStats.trades >= filter.maxTradesPerDay) {
+      return { passed: false, reason: `Exceeded ${filter.maxTradesPerDay} trades/day limit` };
+    }
+
+    // Check minimum hold time (for scalping prevention)
+    if (filter.minPositionHoldTime && this.lastTradeTime) {
+      const timeSinceLast = now - this.lastTradeTime;
+      if (timeSinceLast < filter.minPositionHoldTime) {
+        return { passed: false, reason: `Min hold time not met: ${(timeSinceLast / 1000).toFixed(0)}s < ${filter.minPositionHoldTime / 1000}s` };
+      }
+    }
+
+    return { passed: true };
+  }
+
+  /**
+   * Check source account losing streak
+   */
+  checkSourceStreakFilter(filter, trade) {
+    if (!filter.trackSourceAccount) return { passed: true };
+
+    if (this.consecutiveSourceLosses >= filter.maxConsecutiveSourceLosses) {
+      return { passed: false, reason: `Source has ${this.consecutiveSourceLosses} consecutive losses - paused per ${filter.name}` };
+    }
+
+    return { passed: true };
+  }
+
+  /**
+   * Check position size limits
+   */
+  async checkPositionSizeFilter(filter, trade) {
+    if (!filter.maxRiskPercent) return { passed: true };
+
+    const destInfo = await poolClient.getAccountInfo(this.destAccountId, this.destRegion);
+    const accountBalance = destInfo.balance || destInfo.equity;
+
+    // Calculate risk based on stop loss
+    let riskAmount = 0;
+    if (trade.stopLoss && trade.stopLoss !== 0) {
+      const slDistance = Math.abs(trade.openPrice - trade.stopLoss);
+      const pipValue = trade.volume * 10; // Simplified pip value
+      const slPips = trade.symbol.includes('JPY') ? slDistance * 100 : slDistance * 10000;
+      riskAmount = slPips * pipValue;
+    } else {
+      // No SL, estimate risk as 2% of position value
+      riskAmount = (trade.openPrice * trade.volume * 100000) * 0.02;
+    }
+
+    const riskPercent = (riskAmount / accountBalance) * 100;
+
+    if (riskPercent > filter.maxRiskPercent) {
+      return { passed: false, reason: `Position risk ${riskPercent.toFixed(2)}% > ${filter.maxRiskPercent}% max` };
+    }
+
+    return { passed: true };
+  }
+
+  /**
+   * Check news trading restriction (simplified - checks time only, not actual news events)
+   */
+  checkNewsFilter(filter, trade) {
+    // This is a simplified implementation
+    // Full implementation would require a news calendar API
+    // For now, just check if configured
+    if (filter.newsBufferMinutes) {
+      // In production, you'd check against a news calendar here
+      // For now, we'll just pass through
+      logger.debug('News filter configured but calendar check not implemented');
+    }
+    return { passed: true };
+  }
+
+  /**
+   * Check absolute lot size limits
+   */
+  checkLotSizeFilter(filter, trade) {
+    if (filter.maxLots && trade.volume > filter.maxLots) {
+      return { passed: false, reason: `Lot size ${trade.volume} > ${filter.maxLots} max` };
+    }
+
+    if (filter.minLots && trade.volume < filter.minLots) {
+      return { passed: false, reason: `Lot size ${trade.volume} < ${filter.minLots} min` };
+    }
+
+    return { passed: true };
+  }
+
+  /**
+   * Check total exposure across all positions
+   */
+  async checkExposureFilter(filter, trade) {
+    if (!filter.maxTotalExposurePercent) return { passed: true };
+
+    const destPositions = await poolClient.getPositions(this.destAccountId, this.destRegion);
+    const destInfo = await poolClient.getAccountInfo(this.destAccountId, this.destRegion);
+    const accountBalance = destInfo.balance || destInfo.equity;
+
+    // Calculate total notional exposure
+    let totalExposure = 0;
+    for (const pos of destPositions) {
+      const notional = pos.openPrice * pos.volume * 100000; // Contract size
+      totalExposure += notional;
+    }
+
+    // Add this new trade's exposure
+    const newExposure = trade.openPrice * trade.volume * 100000;
+    totalExposure += newExposure;
+
+    const exposurePercent = (totalExposure / accountBalance) * 100;
+
+    if (exposurePercent > filter.maxTotalExposurePercent) {
+      return { passed: false, reason: `Total exposure ${exposurePercent.toFixed(1)}% > ${filter.maxTotalExposurePercent}% max` };
+    }
+
+    return { passed: true };
   }
 
   /**
