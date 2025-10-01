@@ -137,14 +137,6 @@
         "eaTradingDisclosed": true
       }
     },
-    "d25b9ece-3422-43e8-a59b-cf85246beb3b": {
-      "nickname": "GoldEADemo",
-      "region": "new-york",
-      "type": "destination",
-      "platform": "mt5",
-      "balance": 10000,
-      "broker": "ICMarkets"
-    },
     "ctrader-demo-12345": {
       "nickname": "CTraderDemo",
       "environment": "demo",
@@ -556,36 +548,6 @@
   },
   "routes": [
     {
-      "id": "PFK_to_GoldEA_Conservative",
-      "enabled": false,
-      "name": "PropFirmKid to GoldEA Conservative",
-      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
-      "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
-      "ruleSet": "conservative_05x",
-      "description": "Main prop firm copy with proportional sizing",
-      "notifications": {
-        "onCopy": true,
-        "onError": true,
-        "onFilter": false,
-        "channel": "telegram"
-      }
-    },
-    {
-      "id": "GoldOnly_to_GoldEA_Aggressive",
-      "enabled": false,
-      "name": "GoldOnly to GoldEA Aggressive",
-      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
-      "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
-      "ruleSet": "aggressive_dynamic",
-      "description": "Micro lot gold strategy scaled to standard lots",
-      "notifications": {
-        "onCopy": true,
-        "onError": true,
-        "onFilter": true,
-        "channel": "telegram"
-      }
-    },
-    {
       "id": "PFK_to_PropFirm50k_Conservative",
       "enabled": false,
       "name": "PropFirmKid to PropFirm 50k Conservative",
@@ -662,7 +624,7 @@
     },
     {
       "id": "PFK_to_FTMO100k_Compliant",
-      "enabled": true,
+      "enabled": false,
       "name": "PropFirmKid to FTMO 100k Compliant",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
