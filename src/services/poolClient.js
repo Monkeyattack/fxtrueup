@@ -18,7 +18,7 @@ class PoolClient {
     });
 
     // Circuit breaker state per account
-    this.accountCircuitBreakers = new Map(); // accountId -> { failures: 0, isPaused: false, lastFailure: Date }
+    this.accountCircuitBreakers = new Map(); // accountId -> { failures: 0, isPaused: false, lastFailure: Date, alertSent: false }
 
     // Add response interceptor for error handling
     this.client.interceptors.response.use(
@@ -370,6 +370,7 @@ class PoolClient {
         logger.info(`▶️  Resuming account ${accountId.slice(0, 8)} after 5-minute cooldown`);
         breaker.isPaused = false;
         breaker.failures = 0;
+        breaker.alertSent = false; // Reset alert flag
         return false;
       }
     }
@@ -386,6 +387,7 @@ class PoolClient {
       logger.info(`✅ Account ${accountId.slice(0, 8)} recovered (was ${breaker.failures} failures)`);
       breaker.failures = 0;
       breaker.isPaused = false;
+      breaker.alertSent = false; // Reset alert flag on recovery
     }
   }
 
@@ -396,7 +398,7 @@ class PoolClient {
     let breaker = this.accountCircuitBreakers.get(accountId);
 
     if (!breaker) {
-      breaker = { failures: 0, isPaused: false, lastFailure: Date.now() };
+      breaker = { failures: 0, isPaused: false, lastFailure: Date.now(), alertSent: false };
       this.accountCircuitBreakers.set(accountId, breaker);
     }
 
@@ -411,8 +413,11 @@ class PoolClient {
       logger.error(`🚨 CIRCUIT BREAKER TRIGGERED for ${accountNickname} (${accountId.slice(0, 8)})`);
       logger.error(`   Failed 3 times in a row - pausing requests for 5 minutes`);
 
-      // Send Telegram alert
-      this.sendCircuitBreakerAlert(accountId, accountNickname);
+      // Send Telegram alert ONLY if not already sent
+      if (!breaker.alertSent) {
+        this.sendCircuitBreakerAlert(accountId, accountNickname);
+        breaker.alertSent = true;
+      }
     }
   }
 
