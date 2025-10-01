@@ -75,7 +75,8 @@
       "Bash(./run-basic-tests.sh:*)",
       "Bash(cat:*)",
       "Bash(pm2 status:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Read(//home/claude-dev/.ssh/**)"
     ],
     "deny": [],
     "additionalDirectories": [

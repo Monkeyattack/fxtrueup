@@ -17,6 +17,9 @@ class PoolClient {
       }
     });
 
+    // Circuit breaker state per account
+    this.accountCircuitBreakers = new Map(); // accountId -> { failures: 0, isPaused: false, lastFailure: Date }
+
     // Add response interceptor for error handling
     this.client.interceptors.response.use(
       response => response,
@@ -55,14 +58,28 @@ class PoolClient {
   }
 
   async getPositions(accountId, region = 'new-york') {
+    // Check circuit breaker
+    if (this.isAccountPaused(accountId)) {
+      logger.debug(`⏸️  Account ${accountId.slice(0, 8)} paused due to failures, skipping request`);
+      return [];
+    }
+
     try {
       const response = await this.client.get(`/positions/${accountId}`, {
         params: { region }
       });
+
+      // Success - reset circuit breaker
+      this.recordSuccess(accountId);
+
       // Meta-trader-hub returns object with positions array
       return response.data.positions || response.data || [];
     } catch (error) {
       logger.error(`Failed to get positions for ${accountId}: ${error.message}`);
+
+      // Record failure and check if should pause
+      this.recordFailure(accountId);
+
       return [];
     }
   }
@@ -335,6 +352,133 @@ class PoolClient {
       logger.error(`Pool API health check failed: ${error.message}`);
       return { status: 'error', message: error.message };
     }
+  }
+
+  // ============= CIRCUIT BREAKER =============
+
+  /**
+   * Check if account is paused due to failures
+   */
+  isAccountPaused(accountId) {
+    const breaker = this.accountCircuitBreakers.get(accountId);
+    if (!breaker) return false;
+
+    // Auto-resume after 5 minutes
+    if (breaker.isPaused) {
+      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+      if (breaker.lastFailure < fiveMinutesAgo) {
+        logger.info(`▶️  Resuming account ${accountId.slice(0, 8)} after 5-minute cooldown`);
+        breaker.isPaused = false;
+        breaker.failures = 0;
+        return false;
+      }
+    }
+
+    return breaker.isPaused;
+  }
+
+  /**
+   * Record successful request
+   */
+  recordSuccess(accountId) {
+    const breaker = this.accountCircuitBreakers.get(accountId);
+    if (breaker && breaker.failures > 0) {
+      logger.info(`✅ Account ${accountId.slice(0, 8)} recovered (was ${breaker.failures} failures)`);
+      breaker.failures = 0;
+      breaker.isPaused = false;
+    }
+  }
+
+  /**
+   * Record failed request and pause if threshold reached
+   */
+  recordFailure(accountId) {
+    let breaker = this.accountCircuitBreakers.get(accountId);
+
+    if (!breaker) {
+      breaker = { failures: 0, isPaused: false, lastFailure: Date.now() };
+      this.accountCircuitBreakers.set(accountId, breaker);
+    }
+
+    breaker.failures++;
+    breaker.lastFailure = Date.now();
+
+    if (breaker.failures >= 3 && !breaker.isPaused) {
+      breaker.isPaused = true;
+
+      const accountNickname = this.getAccountNickname(accountId);
+
+      logger.error(`🚨 CIRCUIT BREAKER TRIGGERED for ${accountNickname} (${accountId.slice(0, 8)})`);
+      logger.error(`   Failed 3 times in a row - pausing requests for 5 minutes`);
+
+      // Send Telegram alert
+      this.sendCircuitBreakerAlert(accountId, accountNickname);
+    }
+  }
+
+  /**
+   * Get account nickname from routing config
+   */
+  getAccountNickname(accountId) {
+    // Try to load from routing config if available
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const configPath = path.join(process.cwd(), 'src/config/routing-config.json');
+
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        return config.accounts?.[accountId]?.nickname || accountId.slice(0, 8);
+      }
+    } catch (error) {
+      // Ignore - just return short ID
+    }
+
+    return accountId.slice(0, 8);
+  }
+
+  /**
+   * Send Telegram alert about circuit breaker
+   */
+  async sendCircuitBreakerAlert(accountId, nickname) {
+    try {
+      const telegram = (await import('../utils/telegram.js')).default;
+
+      const message = `<b>🚨 CIRCUIT BREAKER TRIGGERED</b>
+
+<b>Account:</b> ${nickname}
+<b>ID:</b> ${accountId}
+<b>Reason:</b> 3 consecutive failures
+
+<b>Action:</b> Account paused for 5 minutes
+<b>Will auto-resume:</b> ${new Date(Date.now() + 5 * 60 * 1000).toLocaleTimeString()}
+
+<i>Check account connection and broker status.</i>`;
+
+      await telegram.sendMessage(message);
+    } catch (error) {
+      logger.error(`Failed to send circuit breaker alert: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get circuit breaker status for all accounts
+   */
+  getCircuitBreakerStatus() {
+    const status = [];
+
+    for (const [accountId, breaker] of this.accountCircuitBreakers.entries()) {
+      if (breaker.failures > 0 || breaker.isPaused) {
+        status.push({
+          accountId: accountId.slice(0, 8),
+          failures: breaker.failures,
+          isPaused: breaker.isPaused,
+          lastFailure: new Date(breaker.lastFailure).toISOString()
+        });
+      }
+    }
+
+    return status;
   }
 }
 
