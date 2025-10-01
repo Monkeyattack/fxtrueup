@@ -35,8 +35,18 @@
         "drawdownCalculationMethod": "initial_balance",
         "trackFloatingDrawdown": true,
         "requireStopLoss": false,
-        "allowedSymbols": ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "US30", "NAS100"],
-        "prohibitedStrategies": ["high_frequency", "news_trading"],
+        "allowedSymbols": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "XAUUSD",
+          "US30",
+          "NAS100"
+        ],
+        "prohibitedStrategies": [
+          "high_frequency",
+          "news_trading"
+        ],
         "eaTradingAllowed": true,
         "eaTradingDisclosed": true
       }
@@ -60,8 +70,24 @@
         "drawdownCalculationMethod": "balance",
         "trackFloatingDrawdown": true,
         "requireStopLoss": true,
-        "allowedSymbols": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "XAUUSD", "XAGUSD", "US30", "NAS100", "SPX500"],
-        "prohibitedStrategies": ["martingale", "grid", "hedging", "arbitrage"],
+        "allowedSymbols": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD",
+          "USDCAD",
+          "XAUUSD",
+          "XAGUSD",
+          "US30",
+          "NAS100",
+          "SPX500"
+        ],
+        "prohibitedStrategies": [
+          "martingale",
+          "grid",
+          "hedging",
+          "arbitrage"
+        ],
         "eaTradingAllowed": true,
         "eaTradingDisclosed": true
       }
@@ -89,8 +115,24 @@
         "drawdownCalculationMethod": "balance",
         "trackFloatingDrawdown": true,
         "requireStopLoss": false,
-        "allowedSymbols": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "XAUUSD", "XAGUSD", "US30", "NAS100", "SPX500"],
-        "prohibitedStrategies": ["martingale", "grid", "hedging", "arbitrage"],
+        "allowedSymbols": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD",
+          "USDCAD",
+          "XAUUSD",
+          "XAGUSD",
+          "US30",
+          "NAS100",
+          "SPX500"
+        ],
+        "prohibitedStrategies": [
+          "martingale",
+          "grid",
+          "hedging",
+          "arbitrage"
+        ],
         "eaTradingAllowed": true,
         "eaTradingDisclosed": true
       }
@@ -128,7 +170,6 @@
       "broker": "RoboForex"
     }
   },
-
   "ruleSets": {
     "proportional_118x": {
       "name": "1.18x Multiplier",
@@ -139,11 +180,14 @@
       "maxDailyTrades": 5,
       "maxDailyLoss": 3540,
       "minTimeBetweenTrades": 1800000,
-      "filters": ["no_martingale", "trading_hours", "max_positions_1"],
+      "filters": [
+        "no_martingale",
+        "trading_hours",
+        "max_positions_1"
+      ],
       "stopLossAdjustment": 0,
       "takeProfitAdjustment": 0
     },
-
     "fixed_250x": {
       "name": "250x Fixed (Micro to Standard)",
       "description": "Convert 0.01 micro lots to 2.50 standard lots",
@@ -154,9 +198,11 @@
       "maxDailyTrades": 10,
       "maxDailyLoss": 4000,
       "minTimeBetweenTrades": 1800000,
-      "filters": ["single_direction", "max_positions_5"]
+      "filters": [
+        "single_direction",
+        "max_positions_5"
+      ]
     },
-
     "conservative_05x": {
       "name": "Conservative Half Size",
       "description": "Risk reduction strategy - 50% of source size",
@@ -166,9 +212,12 @@
       "maxDailyTrades": 3,
       "maxDailyLoss": 1000,
       "maxOpenPositions": 1,
-      "filters": ["high_win_rate", "no_weekend", "volatility_filter"]
+      "filters": [
+        "high_win_rate",
+        "no_weekend",
+        "volatility_filter"
+      ]
     },
-
     "aggressive_dynamic": {
       "name": "Aggressive Dynamic",
       "description": "High risk/reward - dynamic",
@@ -180,19 +229,26 @@
       "maxOpenPositions": 5,
       "filters": []
     },
-
     "dynamic_risk": {
       "name": "Dynamic Risk Adjusted",
       "description": "Adjusts size based on account performance",
       "type": "dynamic",
       "baseMultiplier": 1.0,
       "performanceAdjustment": {
-        "winning": { "increment": 0.1, "max": 1.5 },
-        "losing": { "decrement": 0.2, "min": 0.5 }
+        "winning": {
+          "increment": 0.1,
+          "max": 1.5
+        },
+        "losing": {
+          "decrement": 0.2,
+          "min": 0.5
+        }
       },
-      "filters": ["risk_adjusted", "correlation_check"]
+      "filters": [
+        "risk_adjusted",
+        "correlation_check"
+      ]
     },
-
     "ftmo_standard_100k": {
       "name": "FTMO Standard 100k",
       "description": "FTMO-compliant rule set for $100k challenge",
@@ -218,7 +274,6 @@
       "stopLossAdjustment": 0,
       "takeProfitAdjustment": 0
     },
-
     "ftmo_standard_50k": {
       "name": "FTMO Standard 50k",
       "description": "FTMO-compliant rule set for $50k challenge",
@@ -243,7 +298,6 @@
       "stopLossAdjustment": 0,
       "takeProfitAdjustment": 0
     },
-
     "tiger_funded_118k": {
       "name": "Tiger Funded 118k Challenge",
       "description": "Tiger Funded-compliant for $118k 2-step challenge",
@@ -267,7 +321,6 @@
       "stopLossAdjustment": 0,
       "takeProfitAdjustment": 0
     },
-
     "tiger_funded_50k": {
       "name": "Tiger Funded 50k Challenge",
       "description": "Tiger Funded-compliant for $50k 2-step challenge",
@@ -290,7 +343,6 @@
       "stopLossAdjustment": 0,
       "takeProfitAdjustment": 0
     },
-
     "alpha_capital_100k": {
       "name": "Alpha Capital 100k",
       "description": "Alpha Capital Group-compliant for $100k",
@@ -316,7 +368,6 @@
       "takeProfitAdjustment": 0
     }
   },
-
   "filters": {
     "no_martingale": {
       "name": "No Martingale",
@@ -328,8 +379,25 @@
       "name": "Trading Hours Only",
       "description": "Trade only during liquid market hours",
       "type": "time_filter",
-      "allowedHoursUTC": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
-      "allowedDays": [1, 2, 3, 4, 5]
+      "allowedHoursUTC": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "allowedDays": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
     },
     "max_positions_1": {
       "name": "Single Position",
@@ -360,7 +428,13 @@
       "name": "No Weekend Trading",
       "description": "Avoid low liquidity weekend markets",
       "type": "time_filter",
-      "allowedDays": [1, 2, 3, 4, 5]
+      "allowedDays": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
     },
     "volatility_filter": {
       "name": "Low Volatility Only",
@@ -374,7 +448,10 @@
       "description": "Trade only with strong directional momentum",
       "type": "technical_filter",
       "requiredMomentum": "strong",
-      "indicators": ["RSI", "MACD"]
+      "indicators": [
+        "RSI",
+        "MACD"
+      ]
     },
     "stop_after_loss_2": {
       "name": "Stop After 2 Losses",
@@ -409,7 +486,14 @@
       "description": "Only trade allowed symbols",
       "type": "symbol_filter",
       "mode": "whitelist",
-      "symbols": ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "US30", "NAS100"]
+      "symbols": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "XAUUSD",
+        "US30",
+        "NAS100"
+      ]
     },
     "no_news_trading": {
       "name": "No News Trading",
@@ -417,7 +501,13 @@
       "type": "news_filter",
       "newsBufferMinutes": 30,
       "highImpactOnly": true,
-      "newsEvents": ["NFP", "FOMC", "CPI", "GDP", "Interest Rate Decision"]
+      "newsEvents": [
+        "NFP",
+        "FOMC",
+        "CPI",
+        "GDP",
+        "Interest Rate Decision"
+      ]
     },
     "max_position_size_2pct": {
       "name": "Max 2% Position Size",
@@ -464,11 +554,10 @@
       "calculationMethod": "notional_value"
     }
   },
-
   "routes": [
     {
       "id": "PFK_to_GoldEA_Conservative",
-      "enabled": true,
+      "enabled": false,
       "name": "PropFirmKid to GoldEA Conservative",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
@@ -483,7 +572,7 @@
     },
     {
       "id": "GoldOnly_to_GoldEA_Aggressive",
-      "enabled": true,
+      "enabled": false,
       "name": "GoldOnly to GoldEA Aggressive",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
@@ -587,7 +676,6 @@
       }
     }
   ],
-
   "globalSettings": {
     "maxActiveRoutes": 10,
     "defaultNotificationChannel": "telegram",
@@ -642,7 +730,10 @@
     "tradingRestrictions": {
       "allowWeekendTrading": false,
       "allowHolidayTrading": false,
-      "marketHolidays": ["2025-01-01", "2025-12-25"],
+      "marketHolidays": [
+        "2025-01-01",
+        "2025-12-25"
+      ],
       "requiredMinimumBalance": 1000,
       "maxPositionHoldDays": 30
     },
@@ -655,7 +746,9 @@
       "dailySummaryTimeUTC": "23:00",
       "weeklySummaryDay": "Sunday",
       "weeklySummaryTimeUTC": "23:00",
-      "alertChannels": ["telegram"],
+      "alertChannels": [
+        "telegram"
+      ],
       "performanceAlerts": {
         "winRateBelowThreshold": 0.4,
         "profitFactorBelowThreshold": 1.0,
