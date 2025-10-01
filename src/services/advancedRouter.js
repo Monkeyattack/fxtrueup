@@ -9,6 +9,8 @@ import { fileURLToPath } from 'url';
 import FilteredCopyTrader from './filteredCopyTrader.js';
 import { logger } from '../utils/logger.js';
 import telegram from '../utils/telegram.js';
+import { performanceMonitor } from './performanceMonitor.js';
+import orphanedPositionCleaner from '../utils/orphanedPositionCleaner.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -279,6 +281,12 @@ ${filterList}`;
     // Start monitoring
     this.startMonitoring();
 
+    // Start performance monitor
+    await performanceMonitor.start();
+
+    // Start orphaned position cleanup (every 30 minutes)
+    orphanedPositionCleaner.startAutoCleanup(this.config, 30);
+
     logger.info('✅ Advanced Router started successfully');
   }
 
@@ -303,6 +311,12 @@ ${filterList}`;
     if (this.monitorInterval) {
       clearInterval(this.monitorInterval);
     }
+
+    // Stop performance monitor
+    performanceMonitor.stop();
+
+    // Stop orphan cleanup
+    orphanedPositionCleaner.stopAutoCleanup();
 
     logger.info('✅ Advanced Router stopped');
   }

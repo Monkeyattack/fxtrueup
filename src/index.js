@@ -11,6 +11,7 @@ import accountRoutes from './routes/accounts.js';
 import analyticsRoutes from './routes/analytics.js';
 import subscriptionRoutes from './routes/subscriptions.js';
 import routesRoutes from './routes/routes.js';
+import dashboardRoutes from './routes/dashboard.js';
 
 dotenv.config();
 
@@ -56,6 +57,7 @@ app.use('/api/accounts', accountRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/routes', routesRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Error handling
 app.use(errorHandler);

@@ -467,9 +467,9 @@
 
   "routes": [
     {
-      "id": "route_001",
+      "id": "PFK_to_GoldEA_Conservative",
       "enabled": true,
-      "name": "PropFirmKid to GoldEADemo",
+      "name": "PropFirmKid to GoldEA Conservative",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
       "ruleSet": "conservative_05x",
@@ -482,9 +482,9 @@
       }
     },
     {
-      "id": "route_002",
+      "id": "GoldOnly_to_GoldEA_Aggressive",
       "enabled": true,
-      "name": "GoldOnly to GoldEADemo",
+      "name": "GoldOnly to GoldEA Aggressive",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
       "ruleSet": "aggressive_dynamic",
@@ -497,9 +497,9 @@
       }
     },
     {
-      "id": "route_003",
+      "id": "PFK_to_PropFirm50k_Conservative",
       "enabled": false,
-      "name": "PropFirmKid Conservative",
+      "name": "PropFirmKid to PropFirm 50k Conservative",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "166bea1c-306e-4a6a-8720-823a0134474f",
       "ruleSet": "conservative_05x",
@@ -512,9 +512,9 @@
       }
     },
     {
-      "id": "route_004",
+      "id": "GoldOnly_to_GoldEA_Dynamic",
       "enabled": false,
-      "name": "GoldOnly to Multiple",
+      "name": "GoldOnly to GoldEA Dynamic Risk",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
       "ruleSet": "dynamic_risk",
@@ -527,9 +527,9 @@
       }
     },
     {
-      "id": "route_005",
+      "id": "PFK_to_cTrader_Proportional",
       "enabled": false,
-      "name": "MT5 to cTrader Copy",
+      "name": "PropFirmKid to cTrader Proportional",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "ctrader-demo-12345",
       "ruleSet": "proportional_118x",
@@ -542,9 +542,9 @@
       }
     },
     {
-      "id": "route_006",
+      "id": "cTrader_to_GridDemo_Conservative",
       "enabled": false,
-      "name": "cTrader Signal Provider",
+      "name": "cTrader to GridDemo Conservative",
       "source": "ctrader-source-67890",
       "destination": "019ec0f0-09f5-4230-a7bd-fa2930af07a4",
       "ruleSet": "conservative_05x",
@@ -557,9 +557,9 @@
       }
     },
     {
-      "id": "route_007",
+      "id": "cTrader_to_cTrader_Dynamic",
       "enabled": false,
-      "name": "cTrader to cTrader",
+      "name": "cTrader to cTrader Dynamic",
       "source": "ctrader-source-67890",
       "destination": "ctrader-live-99999",
       "ruleSet": "dynamic_risk",
@@ -572,9 +572,9 @@
       }
     },
     {
-      "id": "route_008",
+      "id": "PFK_to_FTMO100k_Compliant",
       "enabled": true,
-      "name": "PropFirmKid to FTMO Challenge 100k",
+      "name": "PropFirmKid to FTMO 100k Compliant",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
       "ruleSet": "ftmo_standard_100k",
@@ -645,6 +645,22 @@
       "marketHolidays": ["2025-01-01", "2025-12-25"],
       "requiredMinimumBalance": 1000,
       "maxPositionHoldDays": 30
+    },
+    "alertSettings": {
+      "propFirmWarningThreshold": 0.8,
+      "consecutiveLossAlert": 3,
+      "slippageThresholdPips": 5,
+      "unusualPositionSizeMultiplier": 2.0,
+      "connectionIssueTimeoutMs": 30000,
+      "dailySummaryTimeUTC": "23:00",
+      "weeklySummaryDay": "Sunday",
+      "weeklySummaryTimeUTC": "23:00",
+      "alertChannels": ["telegram"],
+      "performanceAlerts": {
+        "winRateBelowThreshold": 0.4,
+        "profitFactorBelowThreshold": 1.0,
+        "maxDrawdownAlert": 0.05
+      }
     }
   }
 }

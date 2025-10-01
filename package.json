@@ -16,7 +16,9 @@
     "cache:warmup": "node -e \"const service = require('./metaapi-service-optimized.cjs'); service.warmupCache(['account-id-here'])\"",
     "lint": "eslint *.js public/js/*.js",
     "migrate:cache": "node migrate-cache.js",
-    "status": "node src/api/status-server.mjs"
+    "status": "node src/api/status-server.mjs",
+    "cleanup:orphans:scan": "node scripts/cleanup-orphans.js --scan",
+    "cleanup:orphans": "node scripts/cleanup-orphans.js --clean"
   },
   "dependencies": {
     "axios": "^1.11.0",

@@ -17,7 +17,7 @@ class FilteredCopyTrader {
     this.destRegion = destRegion;
     this.sourceRegion = sourceRegion;
     this.routeConfig = routeConfig;
-    
+
     // Tracking state
     this.sourcePositions = new Map(); // Track source positions
     this.processedTrades = new Set(); // Track which trades we've processed
@@ -26,6 +26,9 @@ class FilteredCopyTrader {
     this.consecutiveSourceLosses = 0; // Track source account losing streak
     this.lastTradeTime = 0;
     this.tradeTimestamps = []; // Track timestamps for frequency checking
+
+    // Notification methods (can be overridden by advancedRouter)
+    this.telegramOverrides = null;
     this.dailyStats = {
       date: new Date().toDateString(),
       trades: 0,
@@ -111,7 +114,7 @@ class FilteredCopyTrader {
           tradeTracker.detected(position);
 
           // Send Telegram notification
-          telegram.notifyPositionDetected(position, this.sourceAccountId);
+          await this.notify('notifyPositionDetected', position, this.sourceAccountId);
 
           // Check daily stats before processing
           if (this.checkDailyStats()) {
@@ -336,7 +339,7 @@ class FilteredCopyTrader {
       reasons.forEach(reason => logger.info(`   - ${reason}`));
 
       // Send Telegram notification about filter rejection
-      telegram.notifyFilterRejection(trade, reasons);
+      await this.notify('notifyFilterRejection', trade, reasons);
     } else {
       logger.info(`✅ Trade ${trade.id} PASSED all filters for route ${sourceNickname} → ${destNickname}`);
     }
@@ -522,13 +525,9 @@ class FilteredCopyTrader {
         comment: `Copy_${sourceTrade.id}_L${sourceTrade.volume * 100}`
       };
       
-      // Execute trade
-      const result = await poolClient.executeTrade(
-        this.destAccountId,
-        this.destRegion,
-        tradeData
-      );
-      
+      // Execute trade with retry logic
+      const result = await this.executeTradeWithRetry(tradeData, sourceTrade);
+
       if (result.success) {
         logger.info(`✅ Trade COPIED SUCCESSFULLY!`);
         logger.info(`   Order ID: ${result.orderId}`);
@@ -555,7 +554,7 @@ class FilteredCopyTrader {
         });
 
         // Send Telegram success notification
-        telegram.notifyCopySuccess(sourceTrade, this.destAccountId, {
+        await this.notify('notifyCopySuccess', sourceTrade, this.destAccountId, {
           orderId: result.orderId,
           volume: destVolume
         });
@@ -584,7 +583,7 @@ class FilteredCopyTrader {
         tradeTracker.error(sourceTrade, result.error);
 
         // Send Telegram failure notification
-        telegram.notifyCopyFailure(sourceTrade, 'Execution failed', result.error);
+        await this.notify('notifyCopyFailure', sourceTrade, 'Execution failed', result.error);
 
         return { success: false, error: result.error };
       }
@@ -593,6 +592,96 @@ class FilteredCopyTrader {
       logger.error('Error executing copy trade:', error);
       tradeTracker.error(sourceTrade, error.message);
     }
+  }
+
+  /**
+   * Execute trade with retry logic for connection issues
+   */
+  async executeTradeWithRetry(tradeData, sourceTrade, maxRetries = 3) {
+    const retryDelays = [5000, 10000, 15000]; // 5s, 10s, 15s
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        logger.info(`🔄 Trade execution attempt ${attempt}/${maxRetries}`);
+
+        const result = await poolClient.executeTrade(
+          this.destAccountId,
+          this.destRegion,
+          tradeData
+        );
+
+        if (result.success) {
+          if (attempt > 1) {
+            logger.info(`✅ Trade succeeded on retry attempt ${attempt}`);
+          }
+          return result;
+        }
+
+        // Check if error is retryable
+        const isRetryable = this.isRetryableError(result.error);
+
+        if (!isRetryable) {
+          logger.error(`❌ Non-retryable error: ${result.error}`);
+          return result;
+        }
+
+        if (attempt < maxRetries) {
+          const delay = retryDelays[attempt - 1];
+          logger.warn(`⚠️ Attempt ${attempt} failed: ${result.error}`);
+          logger.info(`⏳ Retrying in ${delay/1000}s... (${maxRetries - attempt} attempts remaining)`);
+          await this.sleep(delay);
+        } else {
+          logger.error(`❌ All ${maxRetries} attempts failed`);
+          return result;
+        }
+
+      } catch (error) {
+        const isRetryable = this.isRetryableError(error.message);
+
+        if (!isRetryable || attempt === maxRetries) {
+          logger.error(`❌ Fatal error on attempt ${attempt}: ${error.message}`);
+          return { success: false, error: error.message };
+        }
+
+        const delay = retryDelays[attempt - 1];
+        logger.warn(`⚠️ Attempt ${attempt} threw error: ${error.message}`);
+        logger.info(`⏳ Retrying in ${delay/1000}s...`);
+        await this.sleep(delay);
+      }
+    }
+
+    return { success: false, error: 'Max retries exceeded' };
+  }
+
+  /**
+   * Check if error is retryable (connection/timeout issues)
+   */
+  isRetryableError(errorMessage) {
+    if (!errorMessage) return false;
+
+    const retryablePatterns = [
+      'timeout',
+      'ETIMEDOUT',
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'Connection refused',
+      'no response',
+      'socket hang up',
+      'network',
+      'ESOCKETTIMEDOUT'
+    ];
+
+    const errorLower = errorMessage.toLowerCase();
+    return retryablePatterns.some(pattern =>
+      errorLower.includes(pattern.toLowerCase())
+    );
+  }
+
+  /**
+   * Sleep helper
+   */
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -956,6 +1045,19 @@ class FilteredCopyTrader {
     }
 
     return { passed: true };
+  }
+
+  /**
+   * Send notification (uses overrides if set, otherwise base telegram)
+   */
+  async notify(method, ...args) {
+    if (this.telegramOverrides && this.telegramOverrides[method]) {
+      // Use enhanced notifications from advancedRouter
+      return await this.telegramOverrides[method](...args);
+    } else {
+      // Fallback to base telegram module
+      return await telegram[method](...args);
+    }
   }
 
   /**
