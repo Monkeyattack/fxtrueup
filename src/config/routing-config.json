@@ -563,21 +563,6 @@
       }
     },
     {
-      "id": "GoldOnly_to_GoldEA_Dynamic",
-      "enabled": false,
-      "name": "GoldOnly to GoldEA Dynamic Risk",
-      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
-      "destination": "d25b9ece-3422-43e8-a59b-cf85246beb3b",
-      "ruleSet": "dynamic_risk",
-      "description": "Dynamic risk-adjusted copy to demo account",
-      "notifications": {
-        "onCopy": true,
-        "onError": true,
-        "onFilter": false,
-        "channel": "telegram"
-      }
-    },
-    {
       "id": "PFK_to_cTrader_Proportional",
       "enabled": false,
       "name": "PropFirmKid to cTrader Proportional",
