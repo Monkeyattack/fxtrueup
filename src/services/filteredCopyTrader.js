@@ -72,12 +72,16 @@ class FilteredCopyTrader {
 
     // Initial sync of source positions only
     const initialPositions = await poolClient.getPositions(this.sourceAccountId, this.sourceRegion);
+    const copyExisting = this.copyExistingPositions || this.routeConfig?.copyExistingPositions || false;
+
     initialPositions.forEach(pos => {
       this.sourcePositions.set(pos.id, pos);
-      // Mark existing positions as already processed to avoid copying old trades
-      this.processedTrades.add(pos.id);
+      // Mark existing positions as already processed UNLESS copyExistingPositions is true
+      if (!copyExisting) {
+        this.processedTrades.add(pos.id);
+      }
     });
-    logger.info(`📊 Initial source positions: ${initialPositions.length}`);
+    logger.info(`📊 Initial source positions: ${initialPositions.length}${copyExisting ? ' (will copy existing)' : ' (skipping existing)'}`);
 
     // Initialize position monitor
     if (!this.positionMonitor) {
@@ -102,6 +106,8 @@ class FilteredCopyTrader {
       if (event.accountId === this.sourceAccountId) {
         const position = event.position;
         if (!this.processedTrades.has(position.id)) {
+          // Mark as processed IMMEDIATELY to prevent duplicate triggers
+          this.processedTrades.add(position.id);
           this.sourcePositions.set(position.id, position);
 
           // Get account nickname from config
@@ -113,7 +119,7 @@ class FilteredCopyTrader {
           logger.info(`   Position ID: ${position.id}`);
           tradeTracker.detected(position);
 
-          // Send Telegram notification
+          // Send Telegram notification (only once per position)
           await this.notify('notifyPositionDetected', position, this.sourceAccountId);
 
           // Check daily stats before processing
@@ -123,7 +129,6 @@ class FilteredCopyTrader {
             await this.executeCopyTrade(position);
           } else {
             logger.warn(`⚠️ Trade ${position.id} not copied due to daily loss limit`);
-            this.processedTrades.add(position.id); // Mark as processed to avoid retries
           }
         }
       }
@@ -700,7 +705,20 @@ class FilteredCopyTrader {
       }
     }
 
-    // Otherwise, use default SL based on symbol
+    // Check for account-level default SL (percentage-based)
+    const sourceAccount = this.routeConfig?.accounts?.[this.sourceAccountId];
+    if (sourceAccount?.defaultStopLoss?.enabled) {
+      const slPercent = sourceAccount.defaultStopLoss.value / 100; // Convert to decimal
+      const slDistance = trade.openPrice * slPercent;
+
+      if (trade.type === 'POSITION_TYPE_BUY') {
+        return trade.openPrice - slDistance;
+      } else {
+        return trade.openPrice + slDistance;
+      }
+    }
+
+    // Otherwise, use default SL based on symbol (fallback)
     const defaultSL = trade.symbol === 'XAUUSD' ? 50 : 40; // pips
     const slDistance = defaultSL * pipSize;
 
@@ -727,7 +745,20 @@ class FilteredCopyTrader {
       }
     }
 
-    // Otherwise, use default TP based on symbol (2:1 risk/reward)
+    // Check for account-level default TP (percentage-based)
+    const sourceAccount = this.routeConfig?.accounts?.[this.sourceAccountId];
+    if (sourceAccount?.defaultTakeProfit?.enabled) {
+      const tpPercent = sourceAccount.defaultTakeProfit.value / 100; // Convert to decimal
+      const tpDistance = trade.openPrice * tpPercent;
+
+      if (trade.type === 'POSITION_TYPE_BUY') {
+        return trade.openPrice + tpDistance;
+      } else {
+        return trade.openPrice - tpDistance;
+      }
+    }
+
+    // Otherwise, use default TP based on symbol (2:1 risk/reward, fallback)
     const defaultTP = trade.symbol === 'XAUUSD' ? 100 : 80; // pips
     const tpDistance = defaultTP * pipSize;
 

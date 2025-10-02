@@ -5,6 +5,7 @@
 
 import poolClient from './poolClient.js';
 import ctraderPoolClient from './ctrader/ctraderPoolClient.js';
+import dxtradePoolClient from './dxtrade/dxtradePoolClient.js';
 import { logger } from '../utils/logger.js';
 
 class UnifiedPoolClient {
@@ -56,7 +57,14 @@ class UnifiedPoolClient {
    */
   async getPoolForAccount(accountId) {
     const config = await this.getAccountConfig(accountId);
-    return config.platform === 'ctrader' ? ctraderPoolClient : poolClient;
+
+    if (config.platform === 'ctrader') {
+      return ctraderPoolClient;
+    } else if (config.platform === 'dxtrade') {
+      return dxtradePoolClient;
+    } else {
+      return poolClient; // Default to MetaAPI
+    }
   }
 
   // ============= ACCOUNT OPERATIONS =============
@@ -65,7 +73,7 @@ class UnifiedPoolClient {
     const config = await this.getAccountConfig(accountId);
     const pool = await this.getPoolForAccount(accountId);
 
-    if (config.platform === 'ctrader') {
+    if (config.platform === 'ctrader' || config.platform === 'dxtrade') {
       return pool.getAccountInfo(accountId, config.environment || 'demo');
     } else {
       return pool.getAccountInfo(accountId, region || config.region);
@@ -76,7 +84,7 @@ class UnifiedPoolClient {
     const config = await this.getAccountConfig(accountId);
     const pool = await this.getPoolForAccount(accountId);
 
-    if (config.platform === 'ctrader') {
+    if (config.platform === 'ctrader' || config.platform === 'dxtrade') {
       return pool.getPositions(accountId, config.environment || 'demo');
     } else {
       return pool.getPositions(accountId, region || config.region);
@@ -123,7 +131,7 @@ class UnifiedPoolClient {
 
     logger.info(`Executing trade on ${config.platform} for account ${accountId}`);
 
-    if (config.platform === 'ctrader') {
+    if (config.platform === 'ctrader' || config.platform === 'dxtrade') {
       return pool.executeTrade(accountId, config.environment || 'demo', tradeData);
     } else {
       return pool.executeTrade(accountId, region || config.region, tradeData);
@@ -134,7 +142,7 @@ class UnifiedPoolClient {
     const config = await this.getAccountConfig(accountId);
     const pool = await this.getPoolForAccount(accountId);
 
-    if (config.platform === 'ctrader') {
+    if (config.platform === 'ctrader' || config.platform === 'dxtrade') {
       return pool.modifyPosition(accountId, config.environment || 'demo', positionId, stopLoss, takeProfit);
     } else {
       return pool.modifyPosition(accountId, region || config.region, positionId, stopLoss, takeProfit);
@@ -145,7 +153,7 @@ class UnifiedPoolClient {
     const config = await this.getAccountConfig(accountId);
     const pool = await this.getPoolForAccount(accountId);
 
-    if (config.platform === 'ctrader') {
+    if (config.platform === 'ctrader' || config.platform === 'dxtrade') {
       return pool.closePosition(accountId, config.environment || 'demo', positionId);
     } else {
       return pool.closePosition(accountId, region || config.region, positionId);
@@ -158,7 +166,7 @@ class UnifiedPoolClient {
     const config = await this.getAccountConfig(accountId);
     const pool = await this.getPoolForAccount(accountId);
 
-    if (config.platform === 'ctrader') {
+    if (config.platform === 'ctrader' || config.platform === 'dxtrade') {
       return pool.initializeStreaming(accountId, config.environment || 'demo');
     } else {
       return pool.initializeStreaming(accountId, region || config.region);
@@ -170,10 +178,11 @@ class UnifiedPoolClient {
       const pool = await this.getPoolForAccount(accountId);
       return pool.subscribeToSymbol(symbol, accountId);
     } else {
-      // Subscribe on both platforms if no specific account
+      // Subscribe on all platforms if no specific account
       const promises = [];
       promises.push(poolClient.subscribeToSymbol(symbol));
       promises.push(ctraderPoolClient.subscribeToSymbol(symbol));
+      promises.push(dxtradePoolClient.subscribeToSymbol(symbol));
 
       const results = await Promise.allSettled(promises);
       return results.some(r => r.status === 'fulfilled' && r.value === true);
@@ -181,10 +190,11 @@ class UnifiedPoolClient {
   }
 
   async getPrice(symbol) {
-    // Try to get price from both platforms and return first available
+    // Try to get price from all platforms and return first available
     const promises = [
       poolClient.getPrice(symbol),
-      ctraderPoolClient.getPrice(symbol)
+      ctraderPoolClient.getPrice(symbol),
+      dxtradePoolClient.getPrice(symbol)
     ];
 
     const results = await Promise.allSettled(promises);
@@ -198,45 +208,49 @@ class UnifiedPoolClient {
   }
 
   async getAllPrices() {
-    // Merge prices from both platforms
-    const [metaapiPrices, ctraderPrices] = await Promise.all([
+    // Merge prices from all platforms
+    const [metaapiPrices, ctraderPrices, dxtradePrices] = await Promise.all([
       poolClient.getAllPrices().catch(() => ({})),
-      ctraderPoolClient.getAllPrices().catch(() => ({}))
+      ctraderPoolClient.getAllPrices().catch(() => ({})),
+      dxtradePoolClient.getAllPrices().catch(() => ({}))
     ]);
 
-    return { ...metaapiPrices, ...ctraderPrices };
+    return { ...metaapiPrices, ...ctraderPrices, ...dxtradePrices };
   }
 
   // ============= POOL MANAGEMENT =============
 
   async getPoolStats() {
-    // Get stats from both pools
-    const [metaapiStats, ctraderStats] = await Promise.all([
+    // Get stats from all pools
+    const [metaapiStats, ctraderStats, dxtradeStats] = await Promise.all([
       poolClient.getPoolStats().catch(() => ({})),
-      ctraderPoolClient.getPoolStats().catch(() => ({}))
+      ctraderPoolClient.getPoolStats().catch(() => ({})),
+      dxtradePoolClient.getPoolStats().catch(() => ({}))
     ]);
 
     return {
       metaapi: metaapiStats,
       ctrader: ctraderStats,
+      dxtrade: dxtradeStats,
       combined: {
-        connectionsCreated: (metaapiStats.connectionsCreated || 0) + (ctraderStats.connectionsCreated || 0),
-        connectionsReused: (metaapiStats.connectionsReused || 0) + (ctraderStats.connectionsReused || 0),
-        tradesExecuted: (metaapiStats.tradesExecuted || 0) + (ctraderStats.tradesExecuted || 0),
-        errors: (metaapiStats.errors || 0) + (ctraderStats.errors || 0),
-        activeConnections: (metaapiStats.activeConnections || 0) + (ctraderStats.activeConnections || 0)
+        connectionsCreated: (metaapiStats.connectionsCreated || 0) + (ctraderStats.connectionsCreated || 0) + (dxtradeStats.connectionsCreated || 0),
+        connectionsReused: (metaapiStats.connectionsReused || 0) + (ctraderStats.connectionsReused || 0) + (dxtradeStats.connectionsReused || 0),
+        tradesExecuted: (metaapiStats.tradesExecuted || 0) + (ctraderStats.tradesExecuted || 0) + (dxtradeStats.tradesExecuted || 0),
+        errors: (metaapiStats.errors || 0) + (ctraderStats.errors || 0) + (dxtradeStats.errors || 0),
+        activeConnections: (metaapiStats.activeConnections || 0) + (ctraderStats.activeConnections || 0) + (dxtradeStats.activeConnections || 0)
       }
     };
   }
 
   async getAccountsSummary() {
-    // Get summaries from both platforms
-    const [metaapiSummary, ctraderSummary] = await Promise.all([
+    // Get summaries from all platforms
+    const [metaapiSummary, ctraderSummary, dxtradeSummary] = await Promise.all([
       poolClient.getAccountsSummary().catch(() => ({})),
-      ctraderPoolClient.getAccountsSummary().catch(() => ({}))
+      ctraderPoolClient.getAccountsSummary().catch(() => ({})),
+      dxtradePoolClient.getAccountsSummary().catch(() => ({}))
     ]);
 
-    return { ...metaapiSummary, ...ctraderSummary };
+    return { ...metaapiSummary, ...ctraderSummary, ...dxtradeSummary };
   }
 
   // ============= CONVENIENCE METHODS =============
@@ -245,7 +259,7 @@ class UnifiedPoolClient {
     const config = await this.getAccountConfig(accountId);
     const pool = await this.getPoolForAccount(accountId);
 
-    if (config.platform === 'ctrader') {
+    if (config.platform === 'ctrader' || config.platform === 'dxtrade') {
       return pool.hasOpenPosition(accountId, symbol, config.environment || 'demo');
     } else {
       return pool.hasOpenPosition(accountId, symbol, region || config.region);
@@ -256,7 +270,7 @@ class UnifiedPoolClient {
     const config = await this.getAccountConfig(accountId);
     const pool = await this.getPoolForAccount(accountId);
 
-    if (config.platform === 'ctrader') {
+    if (config.platform === 'ctrader' || config.platform === 'dxtrade') {
       return pool.getPositionBySymbol(accountId, symbol, config.environment || 'demo');
     } else {
       return pool.getPositionBySymbol(accountId, symbol, region || config.region);
@@ -293,28 +307,32 @@ class UnifiedPoolClient {
   // ============= HEALTH CHECK =============
 
   async healthCheck() {
-    const [metaapiHealth, ctraderHealth] = await Promise.all([
+    const [metaapiHealth, ctraderHealth, dxtradeHealth] = await Promise.all([
       poolClient.healthCheck().catch(err => ({ status: 'error', error: err.message })),
-      ctraderPoolClient.healthCheck().catch(err => ({ status: 'error', error: err.message }))
+      ctraderPoolClient.healthCheck().catch(err => ({ status: 'error', error: err.message })),
+      dxtradePoolClient.healthCheck().catch(err => ({ status: 'error', error: err.message }))
     ]);
 
     return {
       metaapi: metaapiHealth,
       ctrader: ctraderHealth,
-      status: (metaapiHealth.status === 'healthy' || ctraderHealth.status === 'healthy') ? 'healthy' : 'unhealthy'
+      dxtrade: dxtradeHealth,
+      status: (metaapiHealth.status === 'healthy' || ctraderHealth.status === 'healthy' || dxtradeHealth.status === 'healthy') ? 'healthy' : 'unhealthy'
     };
   }
 
   // ============= PLATFORM-SPECIFIC METHODS =============
 
   /**
-   * Get pending orders (cTrader specific, but exposed for compatibility)
+   * Get pending orders (cTrader/DXtrade specific, but exposed for compatibility)
    */
   async getPendingOrders(accountId, region = 'new-york') {
     const config = await this.getAccountConfig(accountId);
 
     if (config.platform === 'ctrader') {
       return ctraderPoolClient.getPendingOrders(accountId, config.environment || 'demo');
+    } else if (config.platform === 'dxtrade') {
+      return dxtradePoolClient.getPendingOrders(accountId, config.environment || 'demo');
     } else {
       // MetaAPI doesn't have a separate pending orders endpoint in pool
       // Return empty array for compatibility
@@ -330,6 +348,8 @@ class UnifiedPoolClient {
 
     if (config.platform === 'ctrader') {
       return ctraderPoolClient.placeLimitOrder(accountId, config.environment || 'demo', orderData);
+    } else if (config.platform === 'dxtrade') {
+      return dxtradePoolClient.placeLimitOrder(accountId, config.environment || 'demo', orderData);
     } else {
       // For MetaAPI, use regular execute trade with limit order type
       return poolClient.executeTrade(accountId, region || config.region, {
@@ -347,6 +367,8 @@ class UnifiedPoolClient {
 
     if (config.platform === 'ctrader') {
       return ctraderPoolClient.cancelOrder(accountId, config.environment || 'demo', orderId);
+    } else if (config.platform === 'dxtrade') {
+      return dxtradePoolClient.cancelOrder(accountId, config.environment || 'demo', orderId);
     } else {
       // MetaAPI doesn't expose order cancellation in the pool
       logger.warn(`Order cancellation not supported for MetaAPI account ${accountId}`);

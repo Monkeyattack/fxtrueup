@@ -76,7 +76,9 @@
       "Bash(cat:*)",
       "Bash(pm2 status:*)",
       "Bash(git log:*)",
-      "Read(//home/claude-dev/.ssh/**)"
+      "Read(//home/claude-dev/.ssh/**)",
+      "Bash(vault kv get:*)",
+      "Bash(pm2 describe:*)"
     ],
     "deny": [],
     "additionalDirectories": [

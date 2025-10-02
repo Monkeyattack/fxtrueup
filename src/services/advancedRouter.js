@@ -106,6 +106,7 @@ class AdvancedRouter {
     trader.destNickname = dest.nickname;
     trader.ruleSetName = ruleSet.name;
     trader.notifications = route.notifications;
+    trader.copyExistingPositions = route.copyExistingPositions || false;
 
     // Override notification methods to include route details
     this.enhanceNotifications(trader);

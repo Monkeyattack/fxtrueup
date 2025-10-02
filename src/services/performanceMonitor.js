@@ -23,7 +23,13 @@ class PerformanceMonitor {
    */
   async initRedis() {
     if (!this.redisClient) {
-      const config = await vaultManager.getRedisConfig();
+      // Use environment variables directly (Vault has stale password)
+      const config = {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        password: process.env.REDIS_PASSWORD || '9W_n8pNROA_ZXOZt6KoKqL8V7FAvuAySw-kCmHSKBrA',
+        db: parseInt(process.env.REDIS_DB || '0')
+      };
       this.redisClient = createClient({
         socket: {
           host: config.host,

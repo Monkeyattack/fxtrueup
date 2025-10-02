@@ -54,19 +54,7 @@ class VaultManager {
   }
 
   async getRedisConfig() {
-    // Try to get Redis config from Vault
-    const vaultConfig = await this.getSecret('secret/shared/redis');
-
-    if (vaultConfig) {
-      return {
-        host: vaultConfig.host || 'localhost',
-        port: parseInt(vaultConfig.port || '6379'),
-        password: vaultConfig.password,
-        db: parseInt(vaultConfig.db || '0')
-      };
-    }
-
-    // Fallback to environment variables
+    // Use environment variables directly (Vault has stale password)
     return {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),

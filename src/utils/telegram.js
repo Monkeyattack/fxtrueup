@@ -12,10 +12,29 @@ class TelegramNotifier {
   constructor() {
     this.queue = [];
     this.processing = false;
+    // Rate limiter: track recent messages to prevent spam
+    this.recentMessages = new Map(); // key: message hash, value: timestamp
+    this.SPAM_WINDOW_MS = 60000; // 1 minute window
+    this.MAX_IDENTICAL_MESSAGES = 1; // Max 1 identical message per minute
   }
 
   async sendMessage(text, parseMode = 'HTML') {
     try {
+      // Anti-spam check: create hash of message content
+      const messageHash = this._hashMessage(text);
+      const now = Date.now();
+
+      // Clean up old entries
+      this._cleanupOldMessages(now);
+
+      // Check if this message was sent recently
+      const lastSent = this.recentMessages.get(messageHash);
+      if (lastSent && (now - lastSent) < this.SPAM_WINDOW_MS) {
+        console.warn(`🚫 Spam prevention: Blocked duplicate message (sent ${Math.round((now - lastSent)/1000)}s ago)`);
+        return { ok: false, spam_blocked: true };
+      }
+
+      // Send the message
       const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
         method: 'POST',
         headers: {
@@ -32,10 +51,43 @@ class TelegramNotifier {
       const result = await response.json();
       if (!result.ok) {
         console.error('Telegram send failed:', result);
+      } else {
+        // Record successful send
+        this.recentMessages.set(messageHash, now);
       }
       return result;
     } catch (error) {
       console.error('Telegram send error:', error);
+    }
+  }
+
+  /**
+   * Create a simple hash of message content for spam detection
+   */
+  _hashMessage(text) {
+    // Extract key parts (ignore timestamps/prices that might vary)
+    const normalized = text
+      .replace(/\d{2}:\d{2}:\d{2}/g, '') // Remove times
+      .replace(/[\d.]+/g, '') // Remove numbers
+      .toLowerCase();
+
+    let hash = 0;
+    for (let i = 0; i < normalized.length; i++) {
+      const char = normalized.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString();
+  }
+
+  /**
+   * Clean up old message records
+   */
+  _cleanupOldMessages(now) {
+    for (const [hash, timestamp] of this.recentMessages.entries()) {
+      if ((now - timestamp) > this.SPAM_WINDOW_MS) {
+        this.recentMessages.delete(hash);
+      }
     }
   }
 

@@ -14,6 +14,8 @@ module.exports = {
         REDIS_PORT: 6379,
         REDIS_PASSWORD: '9W_n8pNROA_ZXOZt6KoKqL8V7FAvuAySw-kCmHSKBrA',
         REDIS_DB: 0,
+        // MetaAPI Pool URL (meta-trader-hub connection pool)
+        POOL_API_URL: 'http://localhost:8086',
         // cTrader OAuth2 credentials (loaded from environment or Vault)
         CTRADER_CLIENT_ID: process.env.CTRADER_CLIENT_ID || '',
         CTRADER_CLIENT_SECRET: process.env.CTRADER_CLIENT_SECRET || '',

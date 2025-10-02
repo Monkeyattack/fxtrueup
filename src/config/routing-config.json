@@ -14,7 +14,19 @@
       "type": "source",
       "platform": "mt5",
       "balance": 5000,
-      "broker": "ICMarkets"
+      "broker": "ICMarkets",
+      "defaultStopLoss": {
+        "enabled": true,
+        "type": "percent",
+        "value": 30,
+        "description": "30% SL if source trade has no SL"
+      },
+      "defaultTakeProfit": {
+        "enabled": true,
+        "type": "percent",
+        "value": 5,
+        "description": "5% TP if source trade has no TP"
+      }
     },
     "019ec0f0-09f5-4230-a7bd-fa2930af07a4": {
       "nickname": "GridDemo",
@@ -160,6 +172,14 @@
       "platform": "ctrader",
       "balance": 25000,
       "broker": "RoboForex"
+    },
+    "hola_C62330": {
+      "nickname": "HolaPrimeProp50k",
+      "environment": "live",
+      "type": "destination",
+      "platform": "dxtrade",
+      "balance": 50000,
+      "broker": "HolaPrime"
     }
   },
   "ruleSets": {
@@ -548,13 +568,14 @@
   },
   "routes": [
     {
-      "id": "PFK_to_PropFirm50k_Conservative",
-      "enabled": false,
-      "name": "PropFirmKid to PropFirm 50k Conservative",
-      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "id": "Gold_to_PropFirm50k_Conservative",
+      "enabled": true,
+      "name": "Gold to PropFirm 50k Conservative",
+      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "166bea1c-306e-4a6a-8720-823a0134474f",
-      "ruleSet": "conservative_05x",
-      "description": "Conservative copy to 50k prop firm account",
+      "ruleSet": "aggressive_dynamic",
+      "description": "Aggressive to 50k prop firm account",
+      "copyExistingPositions": true,
       "notifications": {
         "onCopy": true,
         "onError": true,
@@ -615,6 +636,22 @@
       "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
       "ruleSet": "ftmo_standard_100k",
       "description": "Main EA to FTMO 1-step challenge with full compliance",
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": true,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PFK_to_HolaPrime_DXTrade",
+      "enabled": false,
+      "name": "PropFirmKid to HolaPrime DXtrade",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "hola_C62330",
+      "ruleSet": "ftmo_standard_50k",
+      "description": "Cross-platform copy from MT5 to DXtrade with FTMO-compliant rules (DISABLED - DXtrade integration incomplete)",
+      "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,
         "onError": true,
