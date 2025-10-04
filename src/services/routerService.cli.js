@@ -101,11 +101,34 @@ async function updateStats() {
 
   const stats = advancedRouter.getStats();
 
+  // Enrich stats with normalized timestamps for downstream consumers
+  const enrichedRoutes = stats.routes.map(route => {
+    const lastTradeTimeMs = Number(route.stats.lastTradeTime || 0);
+    const lastActivityIso = lastTradeTimeMs ? new Date(lastTradeTimeMs).toISOString() : '';
+
+    return {
+      ...route,
+      stats: {
+        ...route.stats,
+        lastTradeTime: lastTradeTimeMs,
+        lastActivity: lastActivityIso
+      }
+    };
+  });
+
+  const enrichedStats = {
+    ...stats,
+    timestamp: new Date().toISOString(),
+    routes: enrichedRoutes
+  };
+
   // Update global stats
-  await redisClient.setEx('routing:stats:current', 60, JSON.stringify(stats));
+  const serializedStats = JSON.stringify(enrichedStats);
+  await redisClient.setEx('routing:stats:current', 60, serializedStats);
+  await redisClient.setEx('routing:stats', 60, serializedStats);
 
   // Update per-route stats
-  for (const route of stats.routes) {
+  for (const route of enrichedRoutes) {
     const key = `routing:stats:${route.routeId}`;
     await redisClient.hSet(key, 'detected', String(route.stats.detected || 0));
     await redisClient.hSet(key, 'copied', String(route.stats.copied || 0));
@@ -113,7 +136,8 @@ async function updateStats() {
     await redisClient.hSet(key, 'errors', String(route.stats.errors || 0));
     await redisClient.hSet(key, 'profit', String(route.stats.profit || 0));
     await redisClient.hSet(key, 'dailyLoss', String(route.stats.dailyLoss || 0));
-    await redisClient.hSet(key, 'lastActivity', new Date().toISOString());
+    await redisClient.hSet(key, 'lastActivity', route.stats.lastActivity || '');
+    await redisClient.hSet(key, 'lastTradeTime', String(route.stats.lastTradeTime || 0));
     await redisClient.expire(key, 3600); // Expire after 1 hour
   }
 }

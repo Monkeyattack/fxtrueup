@@ -149,6 +149,16 @@
         "eaTradingDisclosed": true
       }
     },
+    "b90a1029-9ef4-4db5-be87-97fd148fe341": {
+      "nickname": "LiveCopyFromGold",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 0,
+      "broker": "PlexyTrade",
+      "login": "3071423",
+      "server": "PlexyTrade-Server01"
+    },
     "ctrader-demo-12345": {
       "nickname": "CTraderDemo",
       "environment": "demo",
@@ -575,6 +585,22 @@
       "destination": "166bea1c-306e-4a6a-8720-823a0134474f",
       "ruleSet": "aggressive_dynamic",
       "description": "Aggressive to 50k prop firm account",
+      "copyExistingPositions": true,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "Gold_to_LiveCopyFromGold_Aggressive",
+      "enabled": false,
+      "name": "Gold to LiveCopyFromGold Aggressive",
+      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
+      "destination": "b90a1029-9ef4-4db5-be87-97fd148fe341",
+      "ruleSet": "aggressive_dynamic",
+      "description": "Aggressive route to new live account",
       "copyExistingPositions": true,
       "notifications": {
         "onCopy": true,

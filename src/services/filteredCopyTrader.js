@@ -3,7 +3,7 @@
  * Copies trades from Gold account with martingale filtering
  */
 
-import poolClient from './poolClient.js';
+import unifiedPoolClient from './unifiedPoolClient.js';
 import positionMapper from './positionMapper.js';
 import OptimizedPositionMonitor from './optimizedPositionMonitor.js';
 import { logger } from '../utils/logger.js';
@@ -71,7 +71,7 @@ class FilteredCopyTrader {
     logger.info(`Daily Loss Limit: $${this.config.dailyLossLimit}`);
 
     // Initial sync of source positions only
-    const initialPositions = await poolClient.getPositions(this.sourceAccountId, this.sourceRegion);
+    const initialPositions = await unifiedPoolClient.getPositions(this.sourceAccountId, this.sourceRegion);
     const copyExisting = this.copyExistingPositions || this.routeConfig?.copyExistingPositions || false;
 
     initialPositions.forEach(pos => {
@@ -85,7 +85,7 @@ class FilteredCopyTrader {
 
     // Initialize position monitor
     if (!this.positionMonitor) {
-      this.positionMonitor = new OptimizedPositionMonitor(poolClient);
+      this.positionMonitor = new OptimizedPositionMonitor(unifiedPoolClient);
     }
 
     // Set up event listeners
@@ -411,7 +411,7 @@ class FilteredCopyTrader {
    */
   async isGridPattern(trade) {
     // Get all open positions on source account
-    const sourcePositions = await poolClient.getPositions(this.sourceAccountId, 'london');
+    const sourcePositions = await unifiedPoolClient.getPositions(this.sourceAccountId, 'london');
     
     // Check if there are multiple positions at similar prices
     const similarPricePositions = sourcePositions.filter(pos => {
@@ -484,7 +484,7 @@ class FilteredCopyTrader {
       }
       
       // NOW check destination (only when needed)
-      const destPositions = await poolClient.getPositions(this.destAccountId, this.destRegion);
+      const destPositions = await unifiedPoolClient.getPositions(this.destAccountId, this.destRegion);
       
       // Check if already copied
       const alreadyCopied = destPositions.some(
@@ -521,9 +521,11 @@ class FilteredCopyTrader {
       tradeTracker.sized(sourceTrade, destVolume, martingaleLevel);
       
       // Prepare trade data
+      const isBuy = sourceTrade.type === 'POSITION_TYPE_BUY';
       const tradeData = {
         symbol: sourceTrade.symbol,
-        action: sourceTrade.type === 'POSITION_TYPE_BUY' ? 'BUY' : 'SELL',
+        action: isBuy ? 'BUY' : 'SELL',
+        actionType: isBuy ? 'ORDER_TYPE_BUY' : 'ORDER_TYPE_SELL',
         volume: destVolume,
         stopLoss: this.calculateStopLoss(sourceTrade),
         takeProfit: this.calculateTakeProfit(sourceTrade),
@@ -609,7 +611,7 @@ class FilteredCopyTrader {
       try {
         logger.info(`🔄 Trade execution attempt ${attempt}/${maxRetries}`);
 
-        const result = await poolClient.executeTrade(
+        const result = await unifiedPoolClient.executeTrade(
           this.destAccountId,
           this.destRegion,
           tradeData
@@ -784,7 +786,7 @@ class FilteredCopyTrader {
       logger.info(`   Source profit: $${closeInfo.profit?.toFixed(2) || '0.00'}`);
 
       // Check if destination position is still open
-      const destPositions = await poolClient.getPositions(mapping.destAccountId, this.destRegion);
+      const destPositions = await unifiedPoolClient.getPositions(mapping.destAccountId, this.destRegion);
       const destPosition = destPositions.find(pos => pos.id === mapping.destPositionId);
 
       if (!destPosition) {
@@ -794,7 +796,7 @@ class FilteredCopyTrader {
       }
 
       // Close the destination position
-      const closeResult = await poolClient.closePosition(
+      const closeResult = await unifiedPoolClient.closePosition(
         mapping.destAccountId,
         this.destRegion,
         mapping.destPositionId
@@ -927,7 +929,7 @@ class FilteredCopyTrader {
   async checkHedgingFilter(filter, trade) {
     if (filter.allowOpposingPositions) return { passed: true };
 
-    const destPositions = await poolClient.getPositions(this.destAccountId, this.destRegion);
+    const destPositions = await unifiedPoolClient.getPositions(this.destAccountId, this.destRegion);
     const oppositeDirection = trade.type === 'POSITION_TYPE_BUY' ? 'POSITION_TYPE_SELL' : 'POSITION_TYPE_BUY';
 
     const hasOpposite = destPositions.some(pos =>
@@ -994,7 +996,7 @@ class FilteredCopyTrader {
   async checkPositionSizeFilter(filter, trade) {
     if (!filter.maxRiskPercent) return { passed: true };
 
-    const destInfo = await poolClient.getAccountInfo(this.destAccountId, this.destRegion);
+    const destInfo = await unifiedPoolClient.getAccountInfo(this.destAccountId, this.destRegion);
     const accountBalance = destInfo.balance || destInfo.equity;
 
     // Calculate risk based on stop loss
@@ -1054,8 +1056,8 @@ class FilteredCopyTrader {
   async checkExposureFilter(filter, trade) {
     if (!filter.maxTotalExposurePercent) return { passed: true };
 
-    const destPositions = await poolClient.getPositions(this.destAccountId, this.destRegion);
-    const destInfo = await poolClient.getAccountInfo(this.destAccountId, this.destRegion);
+    const destPositions = await unifiedPoolClient.getPositions(this.destAccountId, this.destRegion);
+    const destInfo = await unifiedPoolClient.getAccountInfo(this.destAccountId, this.destRegion);
     const accountBalance = destInfo.balance || destInfo.equity;
 
     // Calculate total notional exposure
