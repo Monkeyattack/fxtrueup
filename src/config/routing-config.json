@@ -14,12 +14,12 @@
       "type": "source",
       "platform": "mt5",
       "balance": 5000,
-      "broker": "ICMarkets",
+      "broker": "PlexyTrade",
       "defaultStopLoss": {
         "enabled": true,
         "type": "percent",
-        "value": 30,
-        "description": "30% SL if source trade has no SL"
+        "value": 3,
+        "description": "3% SL if source trade has no SL"
       },
       "defaultTakeProfit": {
         "enabled": true,
@@ -579,9 +579,9 @@
   "routes": [
     {
       "id": "Gold_to_PropFirm50k_Conservative",
-      "enabled": true,
+      "enabled": false,
       "name": "Gold to PropFirm 50k Conservative",
-      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
+      "source": "∑58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "166bea1c-306e-4a6a-8720-823a0134474f",
       "ruleSet": "aggressive_dynamic",
       "description": "Aggressive to 50k prop firm account",
@@ -595,7 +595,7 @@
     },
     {
       "id": "Gold_to_LiveCopyFromGold_Aggressive",
-      "enabled": false,
+      "enabled": true,
       "name": "Gold to LiveCopyFromGold Aggressive",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "b90a1029-9ef4-4db5-be87-97fd148fe341",
@@ -671,12 +671,12 @@
     },
     {
       "id": "PFK_to_HolaPrime_DXTrade",
-      "enabled": false,
+      "enabled": true,
       "name": "PropFirmKid to HolaPrime DXtrade",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "hola_C62330",
       "ruleSet": "ftmo_standard_50k",
-      "description": "Cross-platform copy from MT5 to DXtrade with FTMO-compliant rules (DISABLED - DXtrade integration incomplete)",
+      "description": "Cross-platform copy from MT5 to DXtrade with FTMO-compliant rules",
       "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,

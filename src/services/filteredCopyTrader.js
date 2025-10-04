@@ -5,7 +5,6 @@
 
 import unifiedPoolClient from './unifiedPoolClient.js';
 import positionMapper from './positionMapper.js';
-import OptimizedPositionMonitor from './optimizedPositionMonitor.js';
 import { logger } from '../utils/logger.js';
 import { tradeTracker } from '../utils/tradeTracker.js';
 import telegram from '../utils/telegram.js';
@@ -27,6 +26,10 @@ class FilteredCopyTrader {
     this.lastTradeTime = 0;
     this.tradeTimestamps = []; // Track timestamps for frequency checking
 
+    // Polling state
+    this.pollingInterval = null;
+    this.pollRate = 5000; // 5 seconds - only check source for new positions
+
     // Notification methods (can be overridden by advancedRouter)
     this.telegramOverrides = null;
     this.dailyStats = {
@@ -35,10 +38,6 @@ class FilteredCopyTrader {
       profit: 0,
       dailyLoss: 0
     };
-    
-    // Position monitor
-    this.positionMonitor = null;
-    this.monitorListeners = new Map();
 
     // Filter configuration
     this.config = {
@@ -83,32 +82,39 @@ class FilteredCopyTrader {
     });
     logger.info(`📊 Initial source positions: ${initialPositions.length}${copyExisting ? ' (will copy existing)' : ' (skipping existing)'}`);
 
-    // Initialize position monitor
-    if (!this.positionMonitor) {
-      this.positionMonitor = new OptimizedPositionMonitor(unifiedPoolClient);
-    }
+    // Start simple polling of source account
+    this.startPolling();
 
-    // Set up event listeners
-    this.setupMonitorListeners();
-
-    // Start monitoring
-    this.positionMonitor.startMonitoring(this.sourceAccountId, this.sourceRegion);
-
-    logger.info('✅ Copy trader started successfully with optimized monitoring');
+    logger.info('✅ Copy trader started successfully');
   }
 
   /**
-   * Set up position monitor event listeners
+   * Start simple polling of source account
    */
-  setupMonitorListeners() {
-    // Handle new positions
-    const openHandler = async (event) => {
-      if (event.accountId === this.sourceAccountId) {
-        const position = event.position;
-        if (!this.processedTrades.has(position.id)) {
+  startPolling() {
+    this.pollingInterval = setInterval(async () => {
+      try {
+        await this.checkSourcePositions();
+      } catch (error) {
+        logger.error(`Error polling source positions: ${error.message}`);
+      }
+    }, this.pollRate);
+  }
+
+  /**
+   * Check source account for new/closed positions
+   */
+  async checkSourcePositions() {
+    try {
+      const currentPositions = await unifiedPoolClient.getPositions(this.sourceAccountId, this.sourceRegion);
+      const currentPositionMap = new Map(currentPositions.map(p => [p.id, p]));
+
+      // Check for new positions
+      for (const [posId, position] of currentPositionMap) {
+        if (!this.processedTrades.has(posId)) {
           // Mark as processed IMMEDIATELY to prevent duplicate triggers
-          this.processedTrades.add(position.id);
-          this.sourcePositions.set(position.id, position);
+          this.processedTrades.add(posId);
+          this.sourcePositions.set(posId, position);
 
           // Get account nickname from config
           const accountNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId.slice(0, 8);
@@ -132,66 +138,39 @@ class FilteredCopyTrader {
           }
         }
       }
-    };
 
-    // Handle closed positions
-    const closeHandler = async (event) => {
-      if (event.accountId === this.sourceAccountId) {
-        logger.info(`📉 Position ${event.positionId} closed on ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId}`);
+      // Check for closed positions
+      for (const [posId, position] of this.sourcePositions) {
+        if (!currentPositionMap.has(posId)) {
+          logger.info(`📉 Position ${posId} closed on ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId}`);
 
-        // Get the mapping for this position
-        const mapping = await positionMapper.getMapping(this.sourceAccountId, event.positionId);
+          // Get the mapping for this position
+          const mapping = await positionMapper.getMapping(this.sourceAccountId, posId);
 
-        if (mapping) {
-          // Copy the exit to destination
-          await this.copyPositionExit(mapping, event.closeInfo);
-        } else {
-          logger.warn(`⚠️ No mapping found for closed position ${event.positionId}`);
+          if (mapping) {
+            // Copy the exit to destination
+            await this.copyPositionExit(mapping, null);
+          } else {
+            logger.warn(`⚠️ No mapping found for closed position ${posId}`);
+          }
+
+          // Remove from tracked positions
+          this.sourcePositions.delete(posId);
         }
-
-        // Remove from tracked positions
-        this.sourcePositions.delete(event.positionId);
       }
-    };
-
-    // Handle position updates (partial close, SL/TP changes)
-    const updateHandler = async (event) => {
-      if (event.accountId === this.sourceAccountId) {
-        const oldPos = event.oldPosition;
-        const newPos = event.newPosition;
-
-        // Check for partial close
-        if (oldPos.volume > newPos.volume) {
-          logger.info(`🔄 Partial close detected for position ${newPos.id}: ${oldPos.volume} → ${newPos.volume}`);
-          // Handle partial close if needed
-        }
-
-        // Update tracked position
-        this.sourcePositions.set(newPos.id, newPos);
-      }
-    };
-
-    // Store listeners for cleanup
-    this.monitorListeners.set('positionOpened', openHandler);
-    this.monitorListeners.set('positionClosed', closeHandler);
-    this.monitorListeners.set('positionUpdated', updateHandler);
-
-    // Add listeners
-    this.positionMonitor.on('positionOpened', openHandler);
-    this.positionMonitor.on('positionClosed', closeHandler);
-    this.positionMonitor.on('positionUpdated', updateHandler);
+    } catch (error) {
+      logger.error(`Error checking source positions: ${error.message}`);
+    }
   }
 
   /**
    * Stop the copy trader
    */
   stop() {
-    // Remove monitor listeners
-    if (this.positionMonitor) {
-      for (const [event, handler] of this.monitorListeners) {
-        this.positionMonitor.removeListener(event, handler);
-      }
-      this.positionMonitor.stopMonitoring(this.sourceAccountId);
+    // Stop polling
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
     }
 
     logger.info('🛑 Copy trader stopped');
