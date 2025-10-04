@@ -21,7 +21,9 @@ module.exports = {
         CTRADER_CLIENT_SECRET: process.env.CTRADER_CLIENT_SECRET || '',
         CTRADER_REDIRECT_URI: process.env.CTRADER_REDIRECT_URI || 'http://localhost:8080/api/ctrader/callback',
         // cTrader Pool Service URL
-        CTRADER_POOL_URL: process.env.CTRADER_POOL_URL || 'http://localhost:8088'
+        CTRADER_POOL_URL: process.env.CTRADER_POOL_URL || 'http://localhost:8088',
+        // DXtrade Pool Service URL
+        DXTRADE_POOL_API_URL: process.env.DXTRADE_POOL_API_URL || 'http://localhost:8089'
       },
       error_file: './logs/router-error.log',
       out_file: './logs/router-out.log',
