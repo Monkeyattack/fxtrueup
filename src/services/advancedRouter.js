@@ -87,7 +87,7 @@ class AdvancedRouter {
     const ruleSet = this.config.ruleSets[route.ruleSet];
     const filters = this.config.filters;
 
-    // Create custom trader with enhanced configuration
+    // Create custom trader with source-only polling (event-driven position detection)
     const trader = new FilteredCopyTrader(
       route.source,
       route.destination,

@@ -190,6 +190,16 @@
       "platform": "dxtrade",
       "balance": 50000,
       "broker": "HolaPrime"
+    },
+    "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d": {
+      "nickname": "AlphaTraderInstant060",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 50000,
+      "broker": "ClassicGlobal",
+      "login": "247647640060",
+      "server": "ClassicGlobal-Server"
     }
   },
   "ruleSets": {
@@ -249,6 +259,17 @@
       "maxDailyTrades": 20,
       "maxDailyLoss": 4000,
       "maxOpenPositions": 5,
+      "filters": []
+    },    
+    "less_aggressive_dynamic": {
+      "name": "Less Aggressive Dynamic",
+      "description": "Lower risk/reward - dynamic",
+      "type": "proportional",
+      "multiplier": 5.0,
+      "roundingMode": "nearest_0.01",
+      "maxDailyTrades": 3,
+      "maxDailyLoss": 4000,
+      "maxOpenPositions": 6,
       "filters": []
     },
     "dynamic_risk": {
@@ -581,7 +602,7 @@
       "id": "Gold_to_PropFirm50k_Conservative",
       "enabled": false,
       "name": "Gold to PropFirm 50k Conservative",
-      "source": "∑58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
+      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "166bea1c-306e-4a6a-8720-823a0134474f",
       "ruleSet": "aggressive_dynamic",
       "description": "Aggressive to 50k prop firm account",
@@ -601,6 +622,21 @@
       "destination": "b90a1029-9ef4-4db5-be87-97fd148fe341",
       "ruleSet": "aggressive_dynamic",
       "description": "Aggressive route to new live account",
+      "copyExistingPositions": true,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },    {
+      "id": "Gold_to_Alpha",
+      "enabled": true,
+      "name": "Gold to Alpha LessAggressive",
+      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
+      "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
+      "ruleSet": "less_aggressive_dynamic",
+      "description": "Less Aggressive route from GoldBuyOnly to AlphaTrader",
       "copyExistingPositions": true,
       "notifications": {
         "onCopy": true,
@@ -677,6 +713,22 @@
       "destination": "hola_C62330",
       "ruleSet": "ftmo_standard_50k",
       "description": "Cross-platform copy from MT5 to DXtrade with FTMO-compliant rules",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": true,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PFK_to_AlphaTrader_FTMO50k",
+      "enabled": true,
+      "name": "PropFirmKid to AlphaTrader Instant",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
+      "ruleSet": "ftmo_standard_50k",
+      "description": "MT5 to MT5 copy with FTMO-compliant rules for AlphaTrader account",
       "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,

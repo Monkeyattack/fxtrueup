@@ -577,6 +577,11 @@ class FilteredCopyTrader {
     } catch (error) {
       logger.error('Error executing copy trade:', error);
       tradeTracker.error(sourceTrade, error.message);
+
+      // Send Telegram failure notification
+      await this.notify('notifyCopyFailure', sourceTrade, 'Exception during execution', error.message);
+
+      return { success: false, error: error.message };
     }
   }
 
