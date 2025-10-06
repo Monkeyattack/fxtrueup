@@ -224,6 +224,71 @@ class AdvancedRouter {
 ${filterList}`;
 
         await telegram.sendMessage(message);
+      },
+
+      notifyCopyFailure: async (position, reason, errorDetails) => {
+        if (!trader.notifications.onError) return;
+
+        const message = `<b>❌ TRADE COPY FAILED</b>
+
+<b>Route:</b> ${trader.sourceNickname} → ${trader.destNickname}
+<b>Rules:</b> "${trader.ruleSetName}"
+
+<b>Symbol:</b> ${position.symbol}
+<b>Volume:</b> ${position.volume} lots
+<b>Price:</b> ${position.openPrice}
+
+<b>Reason:</b> ${reason}
+<b>Error:</b> ${errorDetails}
+
+<b>Time:</b> ${new Date().toISOString()}`;
+
+        await telegram.sendMessage(message);
+      },
+
+      notifyExitCopied: async (mapping, closeInfo, result) => {
+        if (!trader.notifications.onCopy) return;
+
+        const profit = result.profit || closeInfo.profit || 0;
+        const profitEmoji = profit >= 0 ? '💰' : '📉';
+        const reason = closeInfo.reason || 'CLOSED';
+
+        const message = `<b>${profitEmoji} POSITION CLOSED & COPIED</b>
+
+<b>Route:</b> ${trader.sourceNickname} → ${trader.destNickname}
+<b>Rules:</b> "${trader.ruleSetName}"
+
+<b>Symbol:</b> ${mapping.sourceSymbol}
+<b>Source Position:</b> ${mapping.sourcePositionId}
+<b>Dest Position:</b> ${mapping.destPositionId}
+
+<b>Close Reason:</b> ${reason}
+<b>Profit:</b> $${profit.toFixed(2)}
+
+<b>Time:</b> ${new Date().toISOString()}`;
+
+        await telegram.sendMessage(message);
+      },
+
+      notifyExitCopyFailure: async (mapping, errorMessage) => {
+        if (!trader.notifications.onError) return;
+
+        const message = `<b>⚠️ FAILED TO CLOSE POSITION</b>
+
+<b>Route:</b> ${trader.sourceNickname} → ${trader.destNickname}
+<b>Rules:</b> "${trader.ruleSetName}"
+
+<b>Symbol:</b> ${mapping.sourceSymbol}
+<b>Source Position:</b> ${mapping.sourcePositionId}
+<b>Dest Position:</b> ${mapping.destPositionId}
+
+<b>Error:</b> ${errorMessage}
+
+<b>Time:</b> ${new Date().toISOString()}
+
+<i>⚠️ Manual intervention may be required</i>`;
+
+        await telegram.sendMessage(message);
       }
     };
   }

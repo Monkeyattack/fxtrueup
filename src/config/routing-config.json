@@ -630,10 +630,10 @@
         "channel": "telegram"
       }
     },    {
-      "id": "Gold_to_Alpha",
+      "id": "PFK_to_Alpha",
       "enabled": true,
-      "name": "Gold to Alpha LessAggressive",
-      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
+      "name": "PFK to Alpha LessAggressive",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
       "ruleSet": "less_aggressive_dynamic",
       "description": "Less Aggressive route from GoldBuyOnly to AlphaTrader",

@@ -472,7 +472,7 @@ class FilteredCopyTrader {
       if (alreadyCopied) {
         this.processedTrades.add(sourceTrade.id);
         tradeTracker.duplicate(sourceTrade);
-        telegram.notifyCopyFailure(sourceTrade, 'Already copied', 'Position already exists in destination account');
+        await this.notify('notifyCopyFailure', sourceTrade, 'Already copied', 'Position already exists in destination account');
         return { success: false, reason: 'Already copied' };
       }
       
@@ -481,7 +481,7 @@ class FilteredCopyTrader {
       if (destVolume === 0) {
         this.processedTrades.add(sourceTrade.id);
         tradeTracker.rejected(sourceTrade, ['invalid position size']);
-        telegram.notifyCopyFailure(sourceTrade, 'Invalid position size', 'Calculated volume is 0');
+        await this.notify('notifyCopyFailure', sourceTrade, 'Invalid position size', 'Calculated volume is 0');
         return { success: false, reason: 'Invalid position size' };
       }
       
@@ -797,8 +797,8 @@ class FilteredCopyTrader {
         logger.info(`   Profit variance: ${((destProfit - expectedProfit) / expectedProfit * 100).toFixed(1)}%`);
 
         // Send telegram notification
-        telegram.notifyExitCopied(mapping, closeInfo, {
-          destProfit,
+        await this.notify('notifyExitCopied', mapping, closeInfo, {
+          profit: destProfit,
           closeReason: closeInfo.reason
         });
 
@@ -817,11 +817,11 @@ class FilteredCopyTrader {
         await positionMapper.deleteMapping(mapping.sourceAccountId, mapping.sourcePositionId);
       } else {
         logger.error(`❌ Failed to copy exit for position ${mapping.destPositionId}`);
-        telegram.notifyExitCopyFailure(mapping, 'Failed to close position');
+        await this.notify('notifyExitCopyFailure', mapping, 'Failed to close position');
       }
     } catch (error) {
       logger.error('Error copying position exit:', error);
-      telegram.notifyExitCopyFailure(mapping, error.message);
+      await this.notify('notifyExitCopyFailure', mapping, error.message);
     }
   }
 
