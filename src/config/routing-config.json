@@ -149,16 +149,6 @@
         "eaTradingDisclosed": true
       }
     },
-    "b90a1029-9ef4-4db5-be87-97fd148fe341": {
-      "nickname": "LiveCopyFromGold",
-      "region": "london",
-      "type": "destination",
-      "platform": "mt5",
-      "balance": 0,
-      "broker": "PlexyTrade",
-      "login": "3071423",
-      "server": "PlexyTrade-Server01"
-    },
     "ctrader-demo-12345": {
       "nickname": "CTraderDemo",
       "environment": "demo",
@@ -200,6 +190,16 @@
       "broker": "ClassicGlobal",
       "login": "247647640060",
       "server": "ClassicGlobal-Server"
+    },
+    "b90a1029-9ef4-4db5-be87-97fd148fe341": {
+      "nickname": "LiveCopyFromGold",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 0,
+      "broker": "PlexyTrade",
+      "login": "3071423",
+      "server": "PlexyTrade-Server01"
     }
   },
   "ruleSets": {
@@ -224,7 +224,7 @@
       "name": "250x Fixed (Micro to Standard)",
       "description": "Convert 0.01 micro lots to 2.50 standard lots",
       "type": "fixed",
-      "fixedLotSize": 2.50,
+      "fixedLotSize": 2.5,
       "sourceMinLot": 0.01,
       "sourceMaxLot": 0.01,
       "maxDailyTrades": 10,
@@ -254,18 +254,18 @@
       "name": "Aggressive Dynamic",
       "description": "High risk/reward - dynamic",
       "type": "proportional",
-      "multiplier": 11.0,
+      "multiplier": 11,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 20,
       "maxDailyLoss": 4000,
       "maxOpenPositions": 5,
       "filters": []
-    },    
+    },
     "less_aggressive_dynamic": {
       "name": "Less Aggressive Dynamic",
       "description": "Lower risk/reward - dynamic",
       "type": "proportional",
-      "multiplier": 5.0,
+      "multiplier": 5,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 3,
       "maxDailyLoss": 4000,
@@ -276,7 +276,7 @@
       "name": "Dynamic Risk Adjusted",
       "description": "Adjusts size based on account performance",
       "type": "dynamic",
-      "baseMultiplier": 1.0,
+      "baseMultiplier": 1,
       "performanceAdjustment": {
         "winning": {
           "increment": 0.1,
@@ -296,7 +296,7 @@
       "name": "FTMO Standard 100k",
       "description": "FTMO-compliant rule set for $100k challenge",
       "type": "proportional",
-      "multiplier": 1.0,
+      "multiplier": 1,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 10,
       "maxDailyLoss": 5000,
@@ -321,7 +321,7 @@
       "name": "FTMO Standard 50k",
       "description": "FTMO-compliant rule set for $50k challenge",
       "type": "proportional",
-      "multiplier": 1.0,
+      "multiplier": 1,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 10,
       "maxDailyLoss": 2500,
@@ -345,7 +345,7 @@
       "name": "Tiger Funded 118k Challenge",
       "description": "Tiger Funded-compliant for $118k 2-step challenge",
       "type": "proportional",
-      "multiplier": 1.0,
+      "multiplier": 1,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 15,
       "maxDailyLoss": 5900,
@@ -368,7 +368,7 @@
       "name": "Tiger Funded 50k Challenge",
       "description": "Tiger Funded-compliant for $50k 2-step challenge",
       "type": "proportional",
-      "multiplier": 1.0,
+      "multiplier": 1,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 15,
       "maxDailyLoss": 2500,
@@ -390,7 +390,7 @@
       "name": "Alpha Capital 100k",
       "description": "Alpha Capital Group-compliant for $100k",
       "type": "proportional",
-      "multiplier": 1.0,
+      "multiplier": 1,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 12,
       "maxDailyLoss": 4000,
@@ -507,7 +507,7 @@
       "name": "Risk Adjusted Sizing",
       "description": "Adjust size based on stop loss distance",
       "type": "risk_filter",
-      "maxRiskPercent": 2.0
+      "maxRiskPercent": 2
     },
     "correlation_check": {
       "name": "Correlation Filter",
@@ -556,7 +556,7 @@
       "name": "Max 2% Position Size",
       "description": "Limit position size to 2% of account",
       "type": "position_size_filter",
-      "maxRiskPercent": 2.0,
+      "maxRiskPercent": 2,
       "calculationMethod": "account_balance"
     },
     "no_hedging": {
@@ -586,7 +586,7 @@
       "name": "Maximum Lot Size",
       "description": "Absolute maximum lot size per position",
       "type": "lot_size_filter",
-      "maxLots": 5.0,
+      "maxLots": 5,
       "minLots": 0.01
     },
     "max_total_exposure": {
@@ -629,7 +629,8 @@
         "onFilter": false,
         "channel": "telegram"
       }
-    },    {
+    },
+    {
       "id": "PFK_to_Alpha",
       "enabled": true,
       "name": "PFK to Alpha LessAggressive",
@@ -723,7 +724,7 @@
     },
     {
       "id": "PFK_to_AlphaTrader_FTMO50k",
-      "enabled": true,
+      "enabled": false,
       "name": "PropFirmKid to AlphaTrader Instant",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
@@ -734,6 +735,70 @@
         "onCopy": true,
         "onError": true,
         "onFilter": true,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "GoldBuyOnly_to_FTMO_Challenge_100k_551_1759778747834",
+      "enabled": true,
+      "name": "GoldToFTMODynamic",
+      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
+      "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
+      "ruleSet": "less_aggressive_dynamic",
+      "description": "5x multiplier to FTMO with max daily trades",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PropFirmKid_to_AlphaTraderInstant060_1759778887272",
+      "enabled": false,
+      "name": "PFK to Alpha Instant 060",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
+      "ruleSet": "alpha_capital_100k",
+      "description": "Copy to the 100k instant account",
+      "copyExistingPositions": true,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "GoldBuyOnly_to_AlphaTraderInstant060_1759786938206",
+      "enabled": true,
+      "name": "Gold To Alpha Instant",
+      "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
+      "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
+      "ruleSet": "less_aggressive_dynamic",
+      "description": "Gold Buy Only to Alpha Trader instant with a 5x",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PropFirmKid_to_HolaPrimeProp50k_1759798100992",
+      "enabled": false,
+      "name": "PFK to HolaPrime",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "hola_C62330",
+      "ruleSet": "ftmo_standard_100k",
+      "description": "PFK to Hola Prime 1x",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
         "channel": "telegram"
       }
     }
@@ -803,7 +868,7 @@
       "propFirmWarningThreshold": 0.8,
       "consecutiveLossAlert": 3,
       "slippageThresholdPips": 5,
-      "unusualPositionSizeMultiplier": 2.0,
+      "unusualPositionSizeMultiplier": 2,
       "connectionIssueTimeoutMs": 30000,
       "dailySummaryTimeUTC": "23:00",
       "weeklySummaryDay": "Sunday",
@@ -813,7 +878,7 @@
       ],
       "performanceAlerts": {
         "winRateBelowThreshold": 0.4,
-        "profitFactorBelowThreshold": 1.0,
+        "profitFactorBelowThreshold": 1,
         "maxDrawdownAlert": 0.05
       }
     }
