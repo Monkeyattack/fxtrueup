@@ -154,12 +154,33 @@ class PoolClient {
 
   async executeTrade(accountId, region, tradeData) {
     try {
-      const response = await this.client.post('/trade/execute', {
+      // Convert camelCase to snake_case for Python API
+      const payload = {
         account_id: accountId,
         region: region,
-        ...tradeData
-      });
-      return response.data;
+        symbol: tradeData.symbol,
+        action: tradeData.action,
+        volume: tradeData.volume,
+        stop_loss: tradeData.stopLoss,  // Convert camelCase to snake_case
+        take_profit: tradeData.takeProfit,  // Convert camelCase to snake_case
+        comment: tradeData.comment || 'FXTrueUp'
+      };
+
+      const response = await this.client.post('/trade/execute', payload);
+      const data = response.data;
+
+      // Python API returns {success: true, result: {...}} but we need to flatten it
+      if (data.success && data.result) {
+        return {
+          success: true,
+          orderId: data.result.orderId || data.result.positionId,
+          positionId: data.result.positionId,
+          openPrice: data.result.openPrice,
+          ...data.result
+        };
+      }
+
+      return data;
     } catch (error) {
       logger.error(`Failed to execute trade: ${error.message}`);
       return { success: false, error: error.message };

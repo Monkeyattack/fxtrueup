@@ -78,7 +78,9 @@
       "Bash(git log:*)",
       "Read(//home/claude-dev/.ssh/**)",
       "Bash(vault kv get:*)",
-      "Bash(pm2 describe:*)"
+      "Bash(pm2 describe:*)",
+      "Bash(gh release view:*)",
+      "SlashCommand(/reload)"
     ],
     "deny": [],
     "additionalDirectories": [

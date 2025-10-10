@@ -12,6 +12,7 @@ import analyticsRoutes from './routes/analytics.js';
 import subscriptionRoutes from './routes/subscriptions.js';
 import routesRoutes from './routes/routes.js';
 import dashboardRoutes from './routes/dashboard.js';
+import orphansRoutes from './routes/orphans.js';
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/routes', routesRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/orphans', orphansRoutes);
 
 // Error handling
 app.use(errorHandler);

@@ -6,6 +6,7 @@
 import { logger } from './logger.js';
 import positionMapper from '../services/positionMapper.js';
 import poolClient from '../services/poolClient.js';
+import telegram from './telegram.js';
 
 class OrphanedPositionCleaner {
   constructor() {
@@ -31,32 +32,37 @@ class OrphanedPositionCleaner {
 
       // Check each destination position
       for (const destPos of destPositions) {
-        // Try to find matching source position by symbol and open time
-        const sourcePos = sourcePositions.find(p =>
-          p.symbol === destPos.symbol &&
-          p.time === destPos.time
-        );
+        // FIRST check if a valid mapping exists for this destination position
+        const mapping = await positionMapper.findByDestPosition(destAccountId, destPos.id, [sourceAccountId]);
 
-        if (!sourcePos) {
-          // No matching source position - this is an orphan
-          // Check if mapping exists for context
-          const mapping = await positionMapper.findByDestPosition(destAccountId, destPos.id);
+        if (mapping && mapping.sourcePositionId) {
+          // Mapping exists - check if source position still exists
+          const sourcePos = sourcePositions.find(p => p.id === mapping.sourcePositionId);
 
-          let reason = 'no_matching_source';
-          if (mapping) {
-            // Mapping exists but source position closed
-            reason = 'source_closed';
+          if (!sourcePos) {
+            // Mapping exists but source position is closed - this is an orphan
+            orphanedPositions.push({
+              position: destPos,
+              reason: 'source_closed',
+              destAccountId,
+              sourceAccountId,
+              mapping
+            });
+
+            logger.info(`   ⚠️ Orphan: ${destPos.symbol} (${destPos.id}), opened ${destPos.time}, reason: source_closed (mapped to ${mapping.sourcePositionId})`);
           }
-
+          // else: source still exists, position is valid, not an orphan
+        } else {
+          // No valid mapping found - this is an orphan (shouldn't happen with proper copy trading)
           orphanedPositions.push({
             position: destPos,
-            reason,
+            reason: 'no_mapping',
             destAccountId,
             sourceAccountId,
-            mapping
+            mapping: null
           });
 
-          logger.info(`   ⚠️ Orphan: ${destPos.symbol} (${destPos.id}), opened ${destPos.time}, reason: ${reason}`);
+          logger.info(`   ⚠️ Orphan: ${destPos.symbol} (${destPos.id}), opened ${destPos.time}, reason: no_mapping`);
         }
       }
 
@@ -74,7 +80,7 @@ class OrphanedPositionCleaner {
   }
 
   /**
-   * Close an orphaned position
+   * Close an orphaned position (internal method, now also used by bot commands)
    */
   async closeOrphanedPosition(orphan) {
     try {
@@ -99,6 +105,147 @@ class OrphanedPositionCleaner {
       return { success: true, result };
     } catch (error) {
       logger.error(`❌ Failed to close orphaned position ${orphan.position.id}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Send Telegram notification for orphaned position
+   */
+  async sendOrphanReport(orphan, routeInfo = {}) {
+    try {
+      const { position, reason, destAccountId, sourceAccountId } = orphan;
+      const openTime = new Date(position.time);
+      const duration = this._formatDuration(Date.now() - openTime.getTime());
+
+      const reasonText = reason === 'source_closed'
+        ? 'Source position closed'
+        : 'No matching source position';
+
+      const message = `<b>⚠️ ORPHANED POSITION DETECTED</b>
+
+<b>Route:</b> ${routeInfo.routeName || 'Unknown'}
+<b>Source:</b> ${sourceAccountId?.substring(0, 8)}...
+<b>Destination:</b> ${destAccountId.substring(0, 8)}...
+<b>Reason:</b> ${reasonText}
+
+<b>Symbol:</b> ${position.symbol}
+<b>Position ID:</b> ${position.id}
+<b>Volume:</b> ${position.volume} lots
+<b>Current Profit:</b> $${position.profit?.toFixed(2) || '0.00'}
+<b>Open Time:</b> ${openTime.toISOString()} (${duration} ago)
+
+${position.stopLoss ? `<b>Stop Loss:</b> ${position.stopLoss}` : '<b>Stop Loss:</b> None'}
+${position.takeProfit ? `<b>Take Profit:</b> ${position.takeProfit}` : '<b>Take Profit:</b> None'}
+
+<b>Manual Actions:</b>
+/closeOrphan ${position.id}
+/setOrphanSL ${position.id} [price]
+/setOrphanTP ${position.id} [price]`;
+
+      await telegram.sendMessage(message);
+    } catch (error) {
+      logger.error(`Failed to send orphan report:`, error);
+    }
+  }
+
+  /**
+   * Format duration in human-readable format
+   */
+  _formatDuration(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ${hours % 24}h`;
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
+    if (minutes > 0) return `${minutes}m`;
+    return `${seconds}s`;
+  }
+
+  /**
+   * Manual close orphan command (for bot)
+   */
+  async closeOrphan(positionId, destAccountId) {
+    try {
+      logger.info(`📱 Manual close orphan: ${positionId} on ${destAccountId.slice(0, 8)}`);
+
+      // Get position details
+      const positions = await poolClient.getPositions(destAccountId);
+      const position = positions.find(p => p.id === positionId);
+
+      if (!position) {
+        throw new Error(`Position ${positionId} not found on account ${destAccountId.slice(0, 8)}`);
+      }
+
+      // Check if mapping exists (no source account hint, will search cache)
+      const mapping = await positionMapper.findByDestPosition(destAccountId, positionId);
+
+      // Close the position
+      const orphan = {
+        position,
+        destAccountId,
+        reason: 'manual_close',
+        mapping
+      };
+
+      const result = await this.closeOrphanedPosition(orphan);
+      return result;
+    } catch (error) {
+      logger.error(`Failed to manually close orphan:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Set stop loss on orphan position (for bot)
+   */
+  async setOrphanStopLoss(positionId, destAccountId, stopLoss) {
+    try {
+      logger.info(`📱 Set orphan SL: ${positionId} on ${destAccountId.slice(0, 8)} to ${stopLoss}`);
+
+      // Verify position exists
+      const positions = await poolClient.getPositions(destAccountId);
+      const position = positions.find(p => p.id === positionId);
+
+      if (!position) {
+        throw new Error(`Position ${positionId} not found on account ${destAccountId.slice(0, 8)}`);
+      }
+
+      // Modify position via pool client
+      const result = await poolClient.modifyPosition(destAccountId, positionId, stopLoss, position.takeProfit);
+
+      logger.info(`✅ Set SL ${stopLoss} on position ${positionId}`);
+      return { success: true, result };
+    } catch (error) {
+      logger.error(`Failed to set orphan SL:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Set take profit on orphan position (for bot)
+   */
+  async setOrphanTakeProfit(positionId, destAccountId, takeProfit) {
+    try {
+      logger.info(`📱 Set orphan TP: ${positionId} on ${destAccountId.slice(0, 8)} to ${takeProfit}`);
+
+      // Verify position exists
+      const positions = await poolClient.getPositions(destAccountId);
+      const position = positions.find(p => p.id === positionId);
+
+      if (!position) {
+        throw new Error(`Position ${positionId} not found on account ${destAccountId.slice(0, 8)}`);
+      }
+
+      // Modify position via pool client
+      const result = await poolClient.modifyPosition(destAccountId, positionId, position.stopLoss, takeProfit);
+
+      logger.info(`✅ Set TP ${takeProfit} on position ${positionId}`);
+      return { success: true, result };
+    } catch (error) {
+      logger.error(`Failed to set orphan TP:`, error);
       return { success: false, error: error.message };
     }
   }
@@ -151,12 +298,17 @@ class OrphanedPositionCleaner {
 
     logger.info('📊 Orphaned Position Report:', JSON.stringify(report, null, 2));
 
+    // Send Telegram notifications for each orphan
+    for (const orphan of orphans) {
+      await this.sendOrphanReport(orphan, { routeName: orphan.routeName });
+    }
+
     if (!autoClose) {
-      logger.info('ℹ️ Auto-close disabled. Set autoClose=true to close these positions.');
+      logger.info('ℹ️ Auto-close disabled. Notifications sent. Use bot commands to manage positions.');
       return { cleaned: 0, failed: 0, orphans: report };
     }
 
-    // Close orphans
+    // Close orphans (only if autoClose is explicitly enabled)
     let cleaned = 0;
     let failed = 0;
 
@@ -175,7 +327,7 @@ class OrphanedPositionCleaner {
   }
 
   /**
-   * Start automatic orphan cleanup (runs periodically)
+   * Start automatic orphan detection and reporting (report-only mode)
    */
   startAutoCleanup(routingConfig, intervalMinutes = 30) {
     if (this.cleanupInterval) {
@@ -183,10 +335,11 @@ class OrphanedPositionCleaner {
       return;
     }
 
-    logger.info(`🔄 Starting automatic orphan cleanup (every ${intervalMinutes} minutes)`);
+    logger.info(`🔄 Starting automatic orphan detection (report-only, every ${intervalMinutes} minutes)`);
 
     this.cleanupInterval = setInterval(async () => {
-      await this.cleanupAllOrphans(routingConfig, true);
+      // Changed to false - report only, no auto-close
+      await this.cleanupAllOrphans(routingConfig, false);
     }, intervalMinutes * 60 * 1000);
   }
 

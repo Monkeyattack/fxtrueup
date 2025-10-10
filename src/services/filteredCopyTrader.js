@@ -19,7 +19,8 @@ class FilteredCopyTrader {
 
     // Tracking state
     this.sourcePositions = new Map(); // Track source positions
-    this.processedTrades = new Set(); // Track which trades we've processed
+    this.processedTrades = new Set(); // Track which trades we've successfully copied
+    this.seenTrades = new Set(); // Track which trades we've detected to prevent duplicate processing
     this.activeMartingaleCycles = new Map(); // Track martingale sequences
     this.recentTradesBySymbol = new Map(); // Track recent trades per symbol for martingale detection
     this.consecutiveSourceLosses = 0; // Track source account losing streak
@@ -111,14 +112,16 @@ class FilteredCopyTrader {
 
       // Check for new positions
       for (const [posId, position] of currentPositionMap) {
-        if (!this.processedTrades.has(posId)) {
-          // Mark as processed IMMEDIATELY to prevent duplicate triggers
-          this.processedTrades.add(posId);
+        if (!this.seenTrades.has(posId)) {
+          // Mark as seen IMMEDIATELY to prevent duplicate triggers
+          this.seenTrades.add(posId);
           this.sourcePositions.set(posId, position);
 
-          // Get account nickname from config
-          const accountNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId.slice(0, 8);
-          logger.info(`🎯 New trade detected from ${accountNickname} (${this.sourceAccountId}):`);
+          // Get account nicknames from config
+          const sourceNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId.slice(0, 8);
+          const destNickname = this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId.slice(0, 8);
+
+          logger.info(`🎯 New trade detected from ${sourceNickname}:`);
           logger.info(`   Symbol: ${position.symbol}`);
           logger.info(`   Volume: ${position.volume} lots`);
           logger.info(`   Price: ${position.openPrice}`);
@@ -126,12 +129,12 @@ class FilteredCopyTrader {
           tradeTracker.detected(position);
 
           // Send Telegram notification (only once per position)
-          await this.notify('notifyPositionDetected', position, this.sourceAccountId);
+          await this.notify('notifyPositionDetected', position, sourceNickname);
 
           // Check daily stats before processing
           if (this.checkDailyStats()) {
             // Process the new trade
-            logger.info(`🔄 Processing detected trade ${position.id} for route ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId} → ${this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId}`);
+            logger.info(`🔄 Processing trade ${position.id} for route ${sourceNickname} → ${destNickname}`);
             await this.executeCopyTrade(position);
           } else {
             logger.warn(`⚠️ Trade ${position.id} not copied due to daily loss limit`);
@@ -142,7 +145,8 @@ class FilteredCopyTrader {
       // Check for closed positions
       for (const [posId, position] of this.sourcePositions) {
         if (!currentPositionMap.has(posId)) {
-          logger.info(`📉 Position ${posId} closed on ${this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId}`);
+          const sourceNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId.slice(0, 8);
+          logger.info(`📉 Position ${posId} closed on ${sourceNickname}`);
 
           // Get the mapping for this position
           const mapping = await positionMapper.getMapping(this.sourceAccountId, posId);
@@ -501,13 +505,21 @@ class FilteredCopyTrader {
       
       // Prepare trade data
       const isBuy = sourceTrade.type === 'POSITION_TYPE_BUY';
+      const calculatedSL = this.calculateStopLoss(sourceTrade);
+      const calculatedTP = this.calculateTakeProfit(sourceTrade);
+
+      logger.info(`📊 Trade execution details:`);
+      logger.info(`   Source SL: ${sourceTrade.stopLoss || 'none'}, TP: ${sourceTrade.takeProfit || 'none'}`);
+      logger.info(`   Calculated SL: ${calculatedSL}, TP: ${calculatedTP}`);
+      logger.info(`   Entry Price: ${sourceTrade.openPrice || sourceTrade.currentPrice || 'unknown'}`);
+
       const tradeData = {
         symbol: sourceTrade.symbol,
         action: isBuy ? 'BUY' : 'SELL',
         actionType: isBuy ? 'ORDER_TYPE_BUY' : 'ORDER_TYPE_SELL',
         volume: destVolume,
-        stopLoss: this.calculateStopLoss(sourceTrade),
-        takeProfit: this.calculateTakeProfit(sourceTrade),
+        stopLoss: calculatedSL,
+        takeProfit: calculatedTP,
         comment: `Copy_${sourceTrade.id}_L${sourceTrade.volume * 100}`
       };
       
@@ -527,9 +539,11 @@ class FilteredCopyTrader {
         this.dailyStats.trades++;
 
         // Create position mapping for exit tracking
+        // CRITICAL: Use positionId (not orderId) for tracking
+        const destPositionId = result.positionId || result.orderId; // Prefer positionId
         await positionMapper.createMapping(this.sourceAccountId, sourceTrade.id, {
           accountId: this.destAccountId,
-          positionId: result.orderId,
+          positionId: destPositionId,
           sourceSymbol: sourceTrade.symbol,
           destSymbol: sourceTrade.symbol,
           sourceVolume: sourceTrade.volume,
@@ -538,6 +552,8 @@ class FilteredCopyTrader {
           sourceOpenPrice: sourceTrade.openPrice,
           destOpenPrice: result.openPrice || sourceTrade.openPrice
         });
+
+        logger.info(`🔗 Created mapping: source ${sourceTrade.id} → dest ${destPositionId}`);
 
         // Send Telegram success notification
         await this.notify('notifyCopySuccess', sourceTrade, this.destAccountId, {
@@ -659,7 +675,9 @@ class FilteredCopyTrader {
       'no response',
       'socket hang up',
       'network',
-      'ESOCKETTIMEDOUT'
+      'ESOCKETTIMEDOUT',
+      'Position not found',  // Exit copy retry - position might not be synced yet
+      'Invalid response from getPositions'  // API connection issues
     ];
 
     const errorLower = errorMessage.toLowerCase();
@@ -756,72 +774,121 @@ class FilteredCopyTrader {
   }
 
   /**
-   * Copy position exit to destination account
+   * Copy position exit to destination account with retry logic
    */
   async copyPositionExit(mapping, closeInfo) {
-    try {
-      const sourceNickname = this.routeConfig?.accounts?.[mapping.sourceAccountId]?.nickname || mapping.sourceAccountId;
-      const destNickname = this.routeConfig?.accounts?.[mapping.destAccountId]?.nickname || mapping.destAccountId;
+    const maxRetries = 3;
+    const retryDelays = [5000, 10000, 20000]; // 5s, 10s, 20s
 
-      logger.info(`📋 COPYING EXIT for route ${sourceNickname} → ${destNickname}:`);
-      logger.info(`   Source position: ${mapping.sourcePositionId}`);
-      logger.info(`   Destination position: ${mapping.destPositionId}`);
-      logger.info(`   Close reason: ${closeInfo.reason}`);
-      logger.info(`   Source profit: $${closeInfo.profit?.toFixed(2) || '0.00'}`);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const sourceNickname = this.routeConfig?.accounts?.[mapping.sourceAccountId]?.nickname || mapping.sourceAccountId;
+        const destNickname = this.routeConfig?.accounts?.[mapping.destAccountId]?.nickname || mapping.destAccountId;
 
-      // Check if destination position is still open
-      const destPositions = await unifiedPoolClient.getPositions(mapping.destAccountId, this.destRegion);
-      const destPosition = destPositions.find(pos => pos.id === mapping.destPositionId);
+        logger.info(`📋 COPYING EXIT for route ${sourceNickname} → ${destNickname} (attempt ${attempt}/${maxRetries}):`);
+        logger.info(`   Source position: ${mapping.sourcePositionId}`);
+        logger.info(`   Destination position: ${mapping.destPositionId}`);
+        logger.info(`   Close reason: ${closeInfo?.reason || 'position closed'}`);
+        logger.info(`   Source profit: $${closeInfo?.profit?.toFixed(2) || '0.00'}`);
 
-      if (!destPosition) {
-        logger.warn(`⚠️ Destination position ${mapping.destPositionId} already closed or not found`);
-        await positionMapper.deleteMapping(mapping.sourceAccountId, mapping.sourcePositionId);
-        return;
-      }
+        // Check if destination position is still open
+        const destPositions = await unifiedPoolClient.getPositions(mapping.destAccountId, this.destRegion);
 
-      // Close the destination position
-      const closeResult = await unifiedPoolClient.closePosition(
-        mapping.destAccountId,
-        this.destRegion,
-        mapping.destPositionId
-      );
+        // Check if we got an actual response or connection error (empty array might be legit)
+        if (!Array.isArray(destPositions)) {
+          throw new Error('Invalid response from getPositions - connection may be down');
+        }
 
-      if (closeResult.success) {
-        const destProfit = destPosition.profit || 0;
-        const profitRatio = mapping.destVolume / mapping.sourceVolume;
-        const expectedProfit = closeInfo.profit * profitRatio;
+        const destPosition = destPositions.find(pos => pos.id === mapping.destPositionId);
 
-        logger.info(`✅ EXIT COPIED SUCCESSFULLY!`);
-        logger.info(`   Destination profit: $${destProfit.toFixed(2)}`);
-        logger.info(`   Expected profit: $${expectedProfit.toFixed(2)}`);
-        logger.info(`   Profit variance: ${((destProfit - expectedProfit) / expectedProfit * 100).toFixed(1)}%`);
-
-        // Send telegram notification
-        await this.notify('notifyExitCopied', mapping, closeInfo, {
-          profit: destProfit,
-          closeReason: closeInfo.reason
-        });
-
-        // Record the close for tracking
-        await positionMapper.recordPositionClose(
-          mapping.sourceAccountId,
-          mapping.sourcePositionId,
-          {
-            ...closeInfo,
-            destProfit,
-            destCloseTime: new Date().toISOString()
+        if (!destPosition) {
+          // Position not found - could be already closed or connection issue
+          // Only delete mapping if we're sure (not on first attempt or after retries)
+          if (attempt === maxRetries) {
+            logger.warn(`⚠️ Destination position ${mapping.destPositionId} not found after ${maxRetries} attempts - assuming closed`);
+            await positionMapper.deleteMapping(mapping.sourceAccountId, mapping.sourcePositionId);
+            return;
+          } else {
+            // Retry - might be connection issue
+            throw new Error('Position not found in response - retrying');
           }
+        }
+
+        // Close the destination position
+        const closeResult = await unifiedPoolClient.closePosition(
+          mapping.destAccountId,
+          this.destRegion,
+          mapping.destPositionId
         );
 
-        // Delete the mapping
-        await positionMapper.deleteMapping(mapping.sourceAccountId, mapping.sourcePositionId);
-      } else {
-        logger.error(`❌ Failed to copy exit for position ${mapping.destPositionId}`);
-        await this.notify('notifyExitCopyFailure', mapping, 'Failed to close position');
+        if (closeResult.success) {
+          const destProfit = destPosition.profit || 0;
+          const profitRatio = mapping.destVolume / mapping.sourceVolume;
+          const expectedProfit = closeInfo?.profit ? closeInfo.profit * profitRatio : 0;
+
+          logger.info(`✅ EXIT COPIED SUCCESSFULLY!`);
+          logger.info(`   Destination profit: $${destProfit.toFixed(2)}`);
+          if (closeInfo?.profit) {
+            logger.info(`   Expected profit: $${expectedProfit.toFixed(2)}`);
+            const variance = expectedProfit !== 0 ? ((destProfit - expectedProfit) / expectedProfit * 100) : 0;
+            logger.info(`   Profit variance: ${variance.toFixed(1)}%`);
+          }
+
+          // Send telegram notification
+          await this.notify('notifyExitCopied', mapping, closeInfo, {
+            profit: destProfit,
+            closeReason: closeInfo?.reason || 'position closed'
+          });
+
+          // Record the close for tracking
+          await positionMapper.recordPositionClose(
+            mapping.sourceAccountId,
+            mapping.sourcePositionId,
+            {
+              ...closeInfo,
+              destProfit,
+              destCloseTime: new Date().toISOString()
+            }
+          );
+
+          // Delete the mapping
+          await positionMapper.deleteMapping(mapping.sourceAccountId, mapping.sourcePositionId);
+
+          // Success - exit retry loop
+          return;
+        } else {
+          // Close failed - retry
+          const errorMsg = closeResult.error || 'Unknown error';
+          logger.error(`❌ Failed to close position ${mapping.destPositionId}: ${errorMsg}`);
+
+          if (attempt < maxRetries && this.isRetryableError(errorMsg)) {
+            const delay = retryDelays[attempt - 1];
+            logger.warn(`⏳ Retrying exit copy in ${delay/1000}s... (${maxRetries - attempt} attempts remaining)`);
+            await this.sleep(delay);
+            continue; // Retry
+          } else {
+            // Non-retryable or last attempt
+            await this.notify('notifyExitCopyFailure', mapping, errorMsg);
+            return;
+          }
+        }
+      } catch (error) {
+        const isRetryable = this.isRetryableError(error.message);
+
+        logger.error(`Error copying position exit (attempt ${attempt}): ${error.message}`);
+
+        if (attempt < maxRetries && isRetryable) {
+          const delay = retryDelays[attempt - 1];
+          logger.warn(`⏳ Retrying exit copy in ${delay/1000}s... (${maxRetries - attempt} attempts remaining)`);
+          await this.sleep(delay);
+          continue; // Retry
+        } else {
+          // Non-retryable or last attempt failed
+          logger.error(`❌ Failed to copy exit after ${attempt} attempts`);
+          await this.notify('notifyExitCopyFailure', mapping, error.message);
+          return;
+        }
       }
-    } catch (error) {
-      logger.error('Error copying position exit:', error);
-      await this.notify('notifyExitCopyFailure', mapping, error.message);
     }
   }
 

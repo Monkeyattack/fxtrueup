@@ -76,12 +76,23 @@ class PositionMapper {
 
   /**
    * Find mapping by destination position
+   * Note: This requires searching through all source accounts' mappings
    */
-  async findByDestPosition(destAccountId, destPositionId) {
-    // This is slower but needed for reverse lookups
-    const allMappings = await this.getAllMappings();
+  async findByDestPosition(destAccountId, destPositionId, sourceAccountIds = []) {
+    // If source account IDs provided (from routing config), search those first
+    for (const sourceAccountId of sourceAccountIds) {
+      const accountMappings = await redisManager.getAccountMappings(sourceAccountId);
 
-    for (const mapping of Object.values(allMappings)) {
+      for (const mapping of Object.values(accountMappings)) {
+        if (mapping.destAccountId === destAccountId &&
+            mapping.destPositionId === destPositionId) {
+          return mapping;
+        }
+      }
+    }
+
+    // If not found and no source accounts provided, check local cache
+    for (const mapping of this.mappings.values()) {
       if (mapping.destAccountId === destAccountId &&
           mapping.destPositionId === destPositionId) {
         return mapping;

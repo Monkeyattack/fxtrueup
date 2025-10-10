@@ -18,7 +18,8 @@
     "migrate:cache": "node migrate-cache.js",
     "status": "node src/api/status-server.mjs",
     "cleanup:orphans:scan": "node scripts/cleanup-orphans.js --scan",
-    "cleanup:orphans": "node scripts/cleanup-orphans.js --clean"
+    "cleanup:orphans": "node scripts/cleanup-orphans.js --clean",
+    "routes": "node src/cli/route-wizard.js"
   },
   "dependencies": {
     "axios": "^1.11.0",

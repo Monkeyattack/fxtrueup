@@ -18,13 +18,13 @@
       "defaultStopLoss": {
         "enabled": true,
         "type": "percent",
-        "value": 3,
+        "value": 1.5,
         "description": "3% SL if source trade has no SL"
       },
       "defaultTakeProfit": {
         "enabled": true,
         "type": "percent",
-        "value": 5,
+        "value": 1.5,
         "description": "5% TP if source trade has no TP"
       }
     },
@@ -258,7 +258,7 @@
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 20,
       "maxDailyLoss": 4000,
-      "maxOpenPositions": 5,
+      "maxOpenPositions": 0,
       "filters": []
     },
     "less_aggressive_dynamic": {
@@ -269,6 +269,17 @@
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 3,
       "maxDailyLoss": 4000,
+      "maxOpenPositions": 6,
+      "filters": []
+    },
+    "pfk_alpha_half": {
+      "name": "PFK to Alpha Account-Size Matched",
+      "description": "0.5x multiplier for $100k → $50k account sizing",
+      "type": "proportional",
+      "multiplier": 0.5,
+      "roundingMode": "nearest_0.01",
+      "maxDailyTrades": 3,
+      "maxDailyLoss": 2000,
       "maxOpenPositions": 6,
       "filters": []
     },
@@ -636,8 +647,8 @@
       "name": "PFK to Alpha LessAggressive",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
-      "ruleSet": "less_aggressive_dynamic",
-      "description": "Less Aggressive route from GoldBuyOnly to AlphaTrader",
+      "ruleSet": "pfk_alpha_half",
+      "description": "Account-size matched route: $100k → $50k = 0.5x multiplier",
       "copyExistingPositions": true,
       "notifications": {
         "onCopy": true,
@@ -708,7 +719,7 @@
     },
     {
       "id": "PFK_to_HolaPrime_DXTrade",
-      "enabled": true,
+      "enabled": false,
       "name": "PropFirmKid to HolaPrime DXtrade",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "hola_C62330",
@@ -772,7 +783,7 @@
     },
     {
       "id": "GoldBuyOnly_to_AlphaTraderInstant060_1759786938206",
-      "enabled": true,
+      "enabled": false,
       "name": "Gold To Alpha Instant",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
@@ -788,7 +799,7 @@
     },
     {
       "id": "PropFirmKid_to_HolaPrimeProp50k_1759798100992",
-      "enabled": false,
+      "enabled": true,
       "name": "PFK to HolaPrime",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "hola_C62330",
@@ -831,16 +842,16 @@
       "manualReviewRequired": true
     },
     "copyTrading": {
-      "maxCopyDelayMs": 5000,
+      "maxCopyDelayMs": 50000,
       "requireSourceSyncBeforeCopy": true,
       "inheritTPSL": true,
       "allowPartialFills": false,
       "retryFailedCopies": true,
       "maxRetries": 3,
-      "retryDelayMs": 2000
+      "retryDelayMs": 10000
     },
     "eaCompliance": {
-      "requireEADisclosure": true,
+      "requireEADisclosure": false,
       "maxEAPositionsPerRoute": 10,
       "trackEAVersion": true,
       "pauseOnEAError": true,
