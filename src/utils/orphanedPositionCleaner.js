@@ -20,7 +20,15 @@ class OrphanedPositionCleaner {
    */
   async findOrphanedPositions(sourceAccountId, destAccountId) {
     try {
-      logger.info(`🔍 Checking for orphaned positions: ${sourceAccountId.slice(0, 8)} → ${destAccountId.slice(0, 8)}`);
+      // OPTIMIZATION: Check if there are any mappings for this route first
+      const routeMappings = await positionMapper.getActiveMappingsForRoute(sourceAccountId, destAccountId);
+
+      if (!routeMappings || routeMappings.length === 0) {
+        logger.debug(`⏭️  Skipping orphan check for ${sourceAccountId.slice(0, 8)} → ${destAccountId.slice(0, 8)} (no active mappings)`);
+        return [];
+      }
+
+      logger.info(`🔍 Checking for orphaned positions: ${sourceAccountId.slice(0, 8)} → ${destAccountId.slice(0, 8)} (${routeMappings.length} active mappings)`);
 
       // Get open positions on both accounts via pool client
       const sourcePositions = await poolClient.getPositions(sourceAccountId);

@@ -198,6 +198,21 @@ class PositionMapper {
   async wasRecentlyClosed(sourceAccountId, sourcePositionId) {
     return await redisManager.wasRecentlyClosed(sourceAccountId, sourcePositionId);
   }
+
+  /**
+   * Get active mappings for a specific route (source → destination)
+   * Used to check if orphan scanning is needed
+   */
+  async getActiveMappingsForRoute(sourceAccountId, destAccountId) {
+    const accountMappings = await this.getAccountMappings(sourceAccountId);
+
+    // Filter for mappings to this specific destination
+    const routeMappings = Object.values(accountMappings).filter(
+      mapping => mapping.destAccountId === destAccountId
+    );
+
+    return routeMappings;
+  }
 }
 
 // Export singleton instance
