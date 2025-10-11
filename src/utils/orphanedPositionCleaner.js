@@ -7,6 +7,7 @@ import { logger } from './logger.js';
 import positionMapper from '../services/positionMapper.js';
 import poolClient from '../services/poolClient.js';
 import telegram from './telegram.js';
+import redisManager from '../services/redisManager.js';
 
 class OrphanedPositionCleaner {
   constructor() {
@@ -298,10 +299,30 @@ ${position.takeProfit ? `<b>Take Profit:</b> ${position.takeProfit}` : '<b>Take 
 
     logger.info('📊 Orphaned Position Report:', JSON.stringify(report, null, 2));
 
-    // Send Telegram notifications for each orphan
+    // Send Telegram notifications for each orphan (with deduplication)
+    let notifiedCount = 0;
+    let skippedCount = 0;
+
     for (const orphan of orphans) {
+      // Check if we already notified about this orphan in the last 24h
+      const alreadyNotified = await redisManager.wasOrphanNotified(
+        orphan.destAccountId,
+        orphan.position.id
+      );
+
+      if (alreadyNotified) {
+        skippedCount++;
+        logger.info(`   ℹ️ Skipping notification for ${orphan.position.id} (already notified within 24h)`);
+        continue;
+      }
+
+      // Send notification and mark as notified
       await this.sendOrphanReport(orphan, { routeName: orphan.routeName });
+      await redisManager.markOrphanNotified(orphan.destAccountId, orphan.position.id);
+      notifiedCount++;
     }
+
+    logger.info(`📬 Sent ${notifiedCount} new orphan alerts, skipped ${skippedCount} duplicates`);
 
     if (!autoClose) {
       logger.info('ℹ️ Auto-close disabled. Notifications sent. Use bot commands to manage positions.');

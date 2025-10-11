@@ -173,6 +173,28 @@ class RedisManager {
   }
 
   /**
+   * Store orphan notification timestamp (24h TTL)
+   */
+  async markOrphanNotified(accountId, positionId) {
+    const client = await this.getClient();
+    const key = `orphan:notified:${accountId}:${positionId}`;
+
+    // Store with 24-hour TTL
+    await client.setex(key, 24 * 60 * 60, new Date().toISOString());
+  }
+
+  /**
+   * Check if orphan was recently notified
+   */
+  async wasOrphanNotified(accountId, positionId) {
+    const client = await this.getClient();
+    const key = `orphan:notified:${accountId}:${positionId}`;
+
+    const exists = await client.exists(key);
+    return exists === 1;
+  }
+
+  /**
    * Close connection
    */
   async disconnect() {

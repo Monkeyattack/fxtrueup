@@ -135,6 +135,7 @@
           "USDCAD",
           "XAUUSD",
           "XAGUSD",
+          "ETHUSD",
           "US30",
           "NAS100",
           "SPX500"
@@ -254,11 +255,11 @@
       "name": "Aggressive Dynamic",
       "description": "High risk/reward - dynamic",
       "type": "proportional",
-      "multiplier": 11,
+      "multiplier": 2,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 20,
-      "maxDailyLoss": 4000,
-      "maxOpenPositions": 0,
+      "maxDailyLoss": 2000,
+      "maxOpenPositions": 20,
       "filters": []
     },
     "less_aggressive_dynamic": {
@@ -704,7 +705,7 @@
     },
     {
       "id": "PFK_to_FTMO100k_Compliant",
-      "enabled": false,
+      "enabled": true,
       "name": "PropFirmKid to FTMO 100k Compliant",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
@@ -751,7 +752,7 @@
     },
     {
       "id": "GoldBuyOnly_to_FTMO_Challenge_100k_551_1759778747834",
-      "enabled": true,
+      "enabled": false,
       "name": "GoldToFTMODynamic",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
