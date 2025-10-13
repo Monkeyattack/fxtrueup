@@ -927,6 +927,12 @@ class FilteredCopyTrader {
         case 'exposure_filter':
           return await this.checkExposureFilter(filter, trade);
 
+        case 'volume_check':
+          return this.checkVolumeCheckFilter(filter, trade);
+
+        case 'time_filter':
+          return this.checkTimeFilter(filter, trade);
+
         default:
           logger.warn(`Unknown filter type: ${type}`);
           return { passed: true, reason: null };
@@ -1126,6 +1132,68 @@ class FilteredCopyTrader {
 
     if (exposurePercent > filter.maxTotalExposurePercent) {
       return { passed: false, reason: `Total exposure ${exposurePercent.toFixed(1)}% > ${filter.maxTotalExposurePercent}% max` };
+    }
+
+    return { passed: true };
+  }
+
+  /**
+   * Check volume multiplier for martingale detection
+   */
+  checkVolumeCheckFilter(filter, trade) {
+    if (!filter.maxVolumeMultiplier) return { passed: true };
+
+    // Get recent trades for this symbol
+    const symbolTrades = this.recentTradesBySymbol.get(trade.symbol) || [];
+
+    // Find most recent trade on same symbol
+    const recentTrades = symbolTrades.filter(t => Date.now() - t.timestamp < 3600000); // Last hour
+
+    if (recentTrades.length === 0) {
+      return { passed: true }; // First trade on symbol
+    }
+
+    // Check if volume is significantly larger than previous (martingale pattern)
+    const lastTrade = recentTrades[recentTrades.length - 1];
+    const volumeMultiplier = trade.volume / lastTrade.volume;
+
+    if (volumeMultiplier > filter.maxVolumeMultiplier) {
+      return {
+        passed: false,
+        reason: `Volume multiplier ${volumeMultiplier.toFixed(2)}x > ${filter.maxVolumeMultiplier}x max (${filter.name})`
+      };
+    }
+
+    return { passed: true };
+  }
+
+  /**
+   * Check trading time restrictions
+   */
+  checkTimeFilter(filter, trade) {
+    const now = new Date();
+    const hour = now.getUTCHours();
+    const day = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
+
+    // Check allowed hours
+    if (filter.allowedHoursUTC && Array.isArray(filter.allowedHoursUTC)) {
+      if (!filter.allowedHoursUTC.includes(hour)) {
+        return {
+          passed: false,
+          reason: `Trading hour ${hour}:00 UTC not allowed (${filter.name})`
+        };
+      }
+    }
+
+    // Check allowed days (1=Monday through 5=Friday)
+    if (filter.allowedDays && Array.isArray(filter.allowedDays)) {
+      if (!filter.allowedDays.includes(day)) {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        return {
+          passed: false,
+          reason: `Trading on ${dayNames[day]} not allowed (${filter.name})`
+        };
+      }
     }
 
     return { passed: true };
