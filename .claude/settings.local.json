@@ -80,7 +80,9 @@
       "Bash(vault kv get:*)",
       "Bash(pm2 describe:*)",
       "Bash(gh release view:*)",
-      "SlashCommand(/reload)"
+      "SlashCommand(/reload)",
+      "Read(//home/claude-dev/repos/mt5-bridge/**)",
+      "Read(//home/claude-dev/repos/archive-metatrader-wine/**)"
     ],
     "deny": [],
     "additionalDirectories": [
