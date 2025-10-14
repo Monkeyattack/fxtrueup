@@ -82,7 +82,8 @@
       "Bash(gh release view:*)",
       "SlashCommand(/reload)",
       "Read(//home/claude-dev/repos/mt5-bridge/**)",
-      "Read(//home/claude-dev/repos/archive-metatrader-wine/**)"
+      "Read(//home/claude-dev/repos/archive-metatrader-wine/**)",
+      "Bash(env)"
     ],
     "deny": [],
     "additionalDirectories": [

@@ -246,6 +246,26 @@ class PoolClient {
     }
   }
 
+  async registerReconnectionCallback(callback) {
+    try {
+      const response = await this.client.post('/streaming/register-reconnection-callback', {
+        callback_id: callback.name || 'anonymous'
+      });
+
+      // Store callback locally for when the pool notifies us
+      if (!this._reconnectionCallbacks) {
+        this._reconnectionCallbacks = [];
+      }
+      this._reconnectionCallbacks.push(callback);
+
+      logger.info(`✅ Registered reconnection callback: ${callback.name || 'anonymous'}`);
+      return response.data.success;
+    } catch (error) {
+      logger.error(`Failed to register reconnection callback: ${error.message}`);
+      return false;
+    }
+  }
+
   async subscribeToSymbol(symbol) {
     try {
       const response = await this.client.post('/streaming/subscribe', {

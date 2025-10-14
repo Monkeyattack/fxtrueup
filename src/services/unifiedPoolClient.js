@@ -173,6 +173,12 @@ class UnifiedPoolClient {
     }
   }
 
+  async registerReconnectionCallback(callback) {
+    // Register with MetaAPI pool (primary platform)
+    const pool = poolClient;
+    return pool.registerReconnectionCallback(callback);
+  }
+
   async subscribeToSymbol(symbol, accountId = null) {
     if (accountId) {
       const pool = await this.getPoolForAccount(accountId);

@@ -104,26 +104,24 @@
         "eaTradingDisclosed": true
       }
     },
-    "bb106d21-d303-4e06-84fd-e6a21d20cec9": {
-      "nickname": "FTMO Challenge 100k 551",
+    "31d02aa2-be05-4af2-85c6-b2ad962e061b": {
+      "nickname": "FTMO Live 997",
       "region": "london",
       "type": "destination",
       "platform": "mt5",
       "balance": 100000,
       "broker": "FTMO",
-      "login": "540289551",
+      "login": "540313997",
+      "server": "FTMO-Server4",
       "propFirmSettings": {
         "propFirmType": "FTMO",
-        "challengePhase": "1-step-challenge",
+        "challengePhase": "live",
         "accountSize": 100000,
         "startingBalance": 100000,
         "maxTotalDrawdown": 10000,
         "maxTotalDrawdownPercent": 10,
         "maxDailyDrawdown": 5000,
         "maxDailyDrawdownPercent": 5,
-        "profitTarget": 10000,
-        "profitTargetPercent": 10,
-        "minTradingDays": 0,
         "drawdownCalculationMethod": "balance",
         "trackFloatingDrawdown": true,
         "requireStopLoss": false,
@@ -255,9 +253,9 @@
       "name": "Aggressive Dynamic",
       "description": "High risk/reward - dynamic",
       "type": "proportional",
-      "multiplier": 2,
+      "multiplier": 3,
       "roundingMode": "nearest_0.01",
-      "maxDailyTrades": 20,
+      "maxDailyTrades": 40,
       "maxDailyLoss": 2000,
       "maxOpenPositions": 20,
       "filters": []
@@ -704,13 +702,14 @@
       }
     },
     {
-      "id": "PFK_to_FTMO100k_Compliant",
+      "id": "PFK_to_FTMO100k_Live",
       "enabled": true,
-      "name": "PropFirmKid to FTMO 100k Compliant",
+      "name": "PropFirmKid to FTMO 100k Live",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
-      "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
+      "destination": "31d02aa2-be05-4af2-85c6-b2ad962e061b",
       "ruleSet": "ftmo_standard_100k",
-      "description": "Main EA to FTMO 1-step challenge with full compliance",
+      "description": "Main EA to FTMO Live account with full compliance",
+      "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,
         "onError": true,
@@ -751,13 +750,13 @@
       }
     },
     {
-      "id": "GoldBuyOnly_to_FTMO_Challenge_100k_551_1759778747834",
+      "id": "GoldBuyOnly_to_FTMO_Live_997_1759778747834",
       "enabled": false,
-      "name": "GoldToFTMODynamic",
+      "name": "GoldToFTMOLiveDynamic",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
-      "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
+      "destination": "31d02aa2-be05-4af2-85c6-b2ad962e061b",
       "ruleSet": "less_aggressive_dynamic",
-      "description": "5x multiplier to FTMO with max daily trades",
+      "description": "5x multiplier to FTMO Live with max daily trades",
       "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,

@@ -70,6 +70,17 @@ class FilteredCopyTrader {
     logger.info(`Destination: ${this.destAccountId}`);
     logger.info(`Daily Loss Limit: $${this.config.dailyLossLimit}`);
 
+    // Register gap detection callback for reconnection events
+    try {
+      await unifiedPoolClient.registerReconnectionCallback(
+        this.checkForMissedTrades.bind(this)
+      );
+      logger.info('📡 Registered reconnection callback for gap detection');
+    } catch (error) {
+      logger.warn(`⚠️ Could not register reconnection callback: ${error.message}`);
+      logger.warn('   Gap detection will not be available');
+    }
+
     // Initial sync of source positions only
     const initialPositions = await unifiedPoolClient.getPositions(this.sourceAccountId, this.sourceRegion);
     const copyExisting = this.copyExistingPositions || this.routeConfig?.copyExistingPositions || false;
@@ -79,6 +90,7 @@ class FilteredCopyTrader {
       // Mark existing positions as already processed UNLESS copyExistingPositions is true
       if (!copyExisting) {
         this.processedTrades.add(pos.id);
+        this.seenTrades.add(pos.id); // CRITICAL: Also mark as seen to prevent re-detection on restart
       }
     });
     logger.info(`📊 Initial source positions: ${initialPositions.length}${copyExisting ? ' (will copy existing)' : ' (skipping existing)'}`);
@@ -132,12 +144,37 @@ class FilteredCopyTrader {
           await this.notify('notifyPositionDetected', position, sourceNickname);
 
           // Check daily stats before processing
-          if (this.checkDailyStats()) {
+          const canTrade = this.checkDailyStats();
+          const dailyStatsInfo = `Trades: ${this.dailyStats.trades}/${this.config.maxDailyTrades}, Loss: $${this.dailyStats.dailyLoss.toFixed(2)}/$${this.config.dailyLossLimit}`;
+
+          logger.info(`📊 Daily stats check for ${position.id}: ${canTrade ? 'PASSED ✅' : 'FAILED ❌'}`);
+          logger.info(`   ${dailyStatsInfo}`);
+
+          if (canTrade) {
             // Process the new trade
             logger.info(`🔄 Processing trade ${position.id} for route ${sourceNickname} → ${destNickname}`);
-            await this.executeCopyTrade(position);
+            const result = await this.executeCopyTrade(position);
+
+            // Log result for debugging
+            if (!result.success) {
+              logger.warn(`⚠️ Trade ${position.id} execution failed: ${result.reason || result.error || 'Unknown reason'}`);
+            }
           } else {
-            logger.warn(`⚠️ Trade ${position.id} not copied due to daily loss limit`);
+            logger.warn(`⚠️ Trade ${position.id} BLOCKED - Daily limit reached`);
+            logger.warn(`   ${dailyStatsInfo}`);
+
+            // Send Telegram notification about blocked trade
+            await telegram.sendMessage(`<b>🚫 TRADE BLOCKED - Daily Limit</b>
+
+<b>Position ID:</b> ${position.id}
+<b>Symbol:</b> ${position.symbol}
+<b>Volume:</b> ${position.volume} lots
+
+<b>Daily Stats:</b>
+• Trades today: ${this.dailyStats.trades}/${this.config.maxDailyTrades}
+• Loss today: $${this.dailyStats.dailyLoss.toFixed(2)}/$${this.config.dailyLossLimit}
+
+<i>Trade rejected to protect daily limits</i>`);
           }
         }
       }
@@ -164,6 +201,103 @@ class FilteredCopyTrader {
       }
     } catch (error) {
       logger.error(`Error checking source positions: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check for missed trades after MetaAPI reconnection
+   * This catches positions that opened/closed during disconnect windows
+   */
+  async checkForMissedTrades(accountId, disconnectDuration) {
+    try {
+      logger.warn(`🔍 GAP DETECTION: Checking for missed trades after ${disconnectDuration.toFixed(1)}s disconnect`);
+
+      // Only check source account reconnections
+      if (accountId !== this.sourceAccountId) {
+        logger.debug(`Gap check skipped - not monitoring account ${accountId.slice(0, 8)}`);
+        return;
+      }
+
+      // Get current positions from source account
+      const currentPositions = await unifiedPoolClient.getPositions(this.sourceAccountId, this.sourceRegion);
+
+      let missedCount = 0;
+
+      // Check for any positions we haven't seen before
+      for (const position of currentPositions) {
+        if (!this.seenTrades.has(position.id)) {
+          missedCount++;
+
+          const sourceNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId.slice(0, 8);
+          const destNickname = this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId.slice(0, 8);
+
+          logger.warn(`📍 MISSED TRADE DETECTED during disconnect:`);
+          logger.warn(`   Position ID: ${position.id}`);
+          logger.warn(`   Symbol: ${position.symbol}`);
+          logger.warn(`   Volume: ${position.volume} lots`);
+          logger.warn(`   Open Price: ${position.openPrice}`);
+          logger.warn(`   Disconnect duration: ${disconnectDuration.toFixed(1)}s`);
+
+          // Mark as seen immediately
+          this.seenTrades.add(position.id);
+          this.sourcePositions.set(position.id, position);
+
+          // Send alert notification about gap detection
+          await telegram.sendMessage(`<b>🔍 GAP DETECTION ALERT</b>
+
+<b>Missed trade found after reconnection:</b>
+
+<b>Route:</b> ${sourceNickname} → ${destNickname}
+<b>Position ID:</b> ${position.id}
+<b>Symbol:</b> ${position.symbol}
+<b>Volume:</b> ${position.volume} lots
+<b>Price:</b> ${position.openPrice}
+<b>Disconnect:</b> ${disconnectDuration.toFixed(1)}s
+
+<i>Processing trade now...</i>`);
+
+          // Check daily stats before processing
+          const canTrade = this.checkDailyStats();
+          const dailyStatsInfo = `Trades: ${this.dailyStats.trades}/${this.config.maxDailyTrades}, Loss: $${this.dailyStats.dailyLoss.toFixed(2)}/$${this.config.dailyLossLimit}`;
+
+          logger.info(`📊 Daily stats check for missed trade ${position.id}: ${canTrade ? 'PASSED ✅' : 'FAILED ❌'}`);
+          logger.info(`   ${dailyStatsInfo}`);
+
+          if (canTrade) {
+            // Process the missed trade
+            logger.info(`🔄 Processing missed trade ${position.id} for route ${sourceNickname} → ${destNickname}`);
+            const result = await this.executeCopyTrade(position);
+
+            if (result.success) {
+              logger.info(`✅ Successfully copied missed trade ${position.id}`);
+            } else {
+              logger.warn(`⚠️ Failed to copy missed trade ${position.id}: ${result.reason || result.error}`);
+            }
+          } else {
+            logger.warn(`⚠️ Missed trade ${position.id} BLOCKED - Daily limit reached`);
+            logger.warn(`   ${dailyStatsInfo}`);
+
+            await telegram.sendMessage(`<b>🚫 MISSED TRADE BLOCKED</b>
+
+<b>Position ID:</b> ${position.id}
+<b>Symbol:</b> ${position.symbol}
+
+<b>Daily Stats:</b>
+• Trades: ${this.dailyStats.trades}/${this.config.maxDailyTrades}
+• Loss: $${this.dailyStats.dailyLoss.toFixed(2)}/$${this.config.dailyLossLimit}
+
+<i>Trade rejected to protect daily limits</i>`);
+          }
+        }
+      }
+
+      if (missedCount === 0) {
+        logger.info(`✅ Gap detection complete - no missed trades`);
+      } else {
+        logger.warn(`⚠️ Gap detection found ${missedCount} missed trade(s)`);
+      }
+    } catch (error) {
+      logger.error(`❌ Error during gap detection: ${error.message}`);
     }
   }
 
@@ -244,7 +378,7 @@ class FilteredCopyTrader {
 
     // 1. Check if we've already processed this trade
     if (this.processedTrades.has(trade.id)) {
-      logger.debug(`⏭️ Skipping trade ${trade.id} - already processed (${this.processedTrades.size} trades in set)`);
+      logger.warn(`⏭️ Trade ${trade.id} SKIPPED - already processed (${this.processedTrades.size} trades in set)`);
       return false; // Silent skip - already processed
     }
 
@@ -723,7 +857,8 @@ class FilteredCopyTrader {
     }
 
     // Otherwise, use default SL based on symbol (fallback)
-    const defaultSL = trade.symbol === 'XAUUSD' ? 50 : 40; // pips
+    // Increased minimum distances to meet broker requirements (many brokers require 100+ pips for XAUUSD)
+    const defaultSL = trade.symbol === 'XAUUSD' ? 150 : 80; // pips
     const slDistance = defaultSL * pipSize;
 
     if (trade.type === 'POSITION_TYPE_BUY') {
@@ -763,7 +898,8 @@ class FilteredCopyTrader {
     }
 
     // Otherwise, use default TP based on symbol (2:1 risk/reward, fallback)
-    const defaultTP = trade.symbol === 'XAUUSD' ? 100 : 80; // pips
+    // Increased minimum distances to meet broker requirements (many brokers require 100+ pips for XAUUSD)
+    const defaultTP = trade.symbol === 'XAUUSD' ? 300 : 160; // pips (2:1 risk/reward)
     const tpDistance = defaultTP * pipSize;
 
     if (trade.type === 'POSITION_TYPE_BUY') {
