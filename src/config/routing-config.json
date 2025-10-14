@@ -649,7 +649,7 @@
       "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
       "ruleSet": "pfk_alpha_half",
       "description": "Account-size matched route: $100k → $50k = 0.5x multiplier",
-      "copyExistingPositions": true,
+      "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,
         "onError": true,
