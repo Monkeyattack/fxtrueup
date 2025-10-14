@@ -258,6 +258,7 @@
       "maxDailyTrades": 40,
       "maxDailyLoss": 2000,
       "maxOpenPositions": 20,
+      "minTimeBetweenTrades": 0,
       "filters": []
     },
     "less_aggressive_dynamic": {
