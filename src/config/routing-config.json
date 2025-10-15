@@ -60,7 +60,7 @@
           "news_trading"
         ],
         "eaTradingAllowed": true,
-        "eaTradingDisclosed": true
+        "eaTradingDisclosed": false
       }
     },
     "166bea1c-306e-4a6a-8720-823a0134474f": {
@@ -101,7 +101,7 @@
           "arbitrage"
         ],
         "eaTradingAllowed": true,
-        "eaTradingDisclosed": true
+        "eaTradingDisclosed": false
       }
     },
     "31d02aa2-be05-4af2-85c6-b2ad962e061b": {
@@ -126,16 +126,9 @@
         "trackFloatingDrawdown": true,
         "requireStopLoss": false,
         "allowedSymbols": [
-          "EURUSD",
-          "GBPUSD",
-          "USDJPY",
-          "AUDUSD",
-          "USDCAD",
           "XAUUSD",
           "XAGUSD",
           "ETHUSD",
-          "US30",
-          "NAS100",
           "SPX500"
         ],
         "prohibitedStrategies": [
@@ -145,7 +138,7 @@
           "arbitrage"
         ],
         "eaTradingAllowed": true,
-        "eaTradingDisclosed": true
+        "eaTradingDisclosed": false
       }
     },
     "ctrader-demo-12345": {
@@ -253,19 +246,20 @@
       "name": "Aggressive Dynamic",
       "description": "High risk/reward - dynamic",
       "type": "proportional",
-      "multiplier": 3,
+      "multiplier": 5,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 40,
       "maxDailyLoss": 2000,
       "maxOpenPositions": 20,
       "minTimeBetweenTrades": 0,
+      "priceRangeFilter": 10000,
       "filters": []
     },
     "less_aggressive_dynamic": {
       "name": "Less Aggressive Dynamic",
       "description": "Lower risk/reward - dynamic",
       "type": "proportional",
-      "multiplier": 5,
+      "multiplier": 3,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 3,
       "maxDailyLoss": 4000,
@@ -310,8 +304,8 @@
       "multiplier": 1,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 10,
-      "maxDailyLoss": 5000,
-      "maxTotalDrawdown": 10000,
+      "maxDailyLoss": 3000,
+      "maxTotalDrawdown": 8000,
       "minTimeBetweenTrades": 600000,
       "maxOpenPositions": 3,
       "trackFloatingDrawdown": true,
@@ -321,7 +315,6 @@
         "require_stop_loss",
         "symbol_whitelist",
         "max_position_size_2pct",
-        "no_weekend",
         "high_frequency_prevention",
         "source_streak_breaker"
       ],
@@ -404,8 +397,8 @@
       "multiplier": 1,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 12,
-      "maxDailyLoss": 4000,
-      "maxTotalDrawdown": 8000,
+      "maxDailyLoss": 3000,
+      "maxTotalDrawdown": 6000,
       "minTimeBetweenTrades": 600000,
       "maxOpenPositions": 4,
       "trackFloatingDrawdown": true,
@@ -413,6 +406,31 @@
         "no_martingale",
         "no_hedging",
         "symbol_whitelist",
+        "max_position_size_2pct",
+        "no_weekend",
+        "high_frequency_prevention",
+        "source_streak_breaker"
+      ],
+      "stopLossAdjustment": 0,
+      "takeProfitAdjustment": 0
+    },
+    "hola_prime_standard_50k": {
+      "name": "HolaPrime Standard 50k",
+      "description": "HolaPrime-compliant for $50k with crypto support",
+      "type": "proportional",
+      "multiplier": 1,
+      "roundingMode": "nearest_0.01",
+      "maxDailyTrades": 10,
+      "maxDailyLoss": 2500,
+      "maxTotalDrawdown": 5000,
+      "minTimeBetweenTrades": 600000,
+      "maxOpenPositions": 3,
+      "trackFloatingDrawdown": true,
+      "filters": [
+        "no_martingale",
+        "no_hedging",
+        "require_stop_loss",
+        "symbol_whitelist_with_crypto",
         "max_position_size_2pct",
         "no_weekend",
         "high_frequency_prevention",
@@ -549,6 +567,22 @@
         "NAS100"
       ]
     },
+    "symbol_whitelist_with_crypto": {
+      "name": "Symbol Whitelist with Crypto",
+      "description": "Allowed symbols including crypto pairs",
+      "type": "symbol_filter",
+      "mode": "whitelist",
+      "symbols": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "XAUUSD",
+        "US30",
+        "NAS100",
+        "ETHUSD",
+        "BTCUSD"
+      ]
+    },
     "no_news_trading": {
       "name": "No News Trading",
       "description": "Avoid trading around high-impact news events",
@@ -617,7 +651,7 @@
       "destination": "166bea1c-306e-4a6a-8720-823a0134474f",
       "ruleSet": "aggressive_dynamic",
       "description": "Aggressive to 50k prop firm account",
-      "copyExistingPositions": true,
+      "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,
         "onError": true,
@@ -633,7 +667,7 @@
       "destination": "b90a1029-9ef4-4db5-be87-97fd148fe341",
       "ruleSet": "aggressive_dynamic",
       "description": "Aggressive route to new live account",
-      "copyExistingPositions": true,
+      "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,
         "onError": true,
@@ -774,7 +808,7 @@
       "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
       "ruleSet": "alpha_capital_100k",
       "description": "Copy to the 100k instant account",
-      "copyExistingPositions": true,
+      "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,
         "onError": true,
@@ -804,8 +838,8 @@
       "name": "PFK to HolaPrime",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "hola_C62330",
-      "ruleSet": "ftmo_standard_100k",
-      "description": "PFK to Hola Prime 1x",
+      "ruleSet": "hola_prime_standard_50k",
+      "description": "PFK to Hola Prime 1x with crypto support",
       "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,

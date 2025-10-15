@@ -40,24 +40,14 @@ class FilteredCopyTrader {
       dailyLoss: 0
     };
 
-    // Filter configuration
+    // Filter configuration - ALL values must come from JSON config via advancedRouter
+    // NO hardcoded defaults - this makes config-driven behavior explicit
     this.config = {
-      maxOpenPositions: 1,
-      minTimeBetweenTrades: 30 * 60 * 1000, // 30 minutes
-      fixedLotSize: 2.50, // Will be replaced by degressive scaling
-      maxDailyTrades: 5,
-      priceRangeFilter: 50, // pips
-      allowedHours: [], // Empty array means 24/7 trading allowed
-      stopLossBuffer: 20, // pips
-      takeProfitBuffer: 30, // pips
-      dailyLossLimit: 3540, // 3% of $118k
-      maxConcurrentCycles: 2, // Max martingale cycles
-      // Degressive scaling for martingale
-      martingaleScaling: {
-        0.01: { multiplier: 8, maxLots: 0.08 },
-        0.02: { multiplier: 6, maxLots: 0.12 },
-        0.03: { multiplier: 4, maxLots: 0.12 }
-      }
+      // Essential tracking only - all filtering/limits set by route config
+      activeFilters: [], // Populated by advancedRouter.applyRuleSet()
+      multiplier: null, // Set by advancedRouter for proportional scaling
+      fixedLotSize: null, // Set by advancedRouter for fixed lot sizing
+      dynamicSizing: null // Set by advancedRouter for dynamic sizing
     };
   }
 
@@ -68,7 +58,6 @@ class FilteredCopyTrader {
     logger.info('🚀 Starting Filtered Copy Trader with Optimized Monitoring');
     logger.info(`Source: ${this.sourceAccountId}`);
     logger.info(`Destination: ${this.destAccountId}`);
-    logger.info(`Daily Loss Limit: $${this.config.dailyLossLimit}`);
 
     // Register gap detection callback for reconnection events
     try {
@@ -145,7 +134,7 @@ class FilteredCopyTrader {
 
           // Check daily stats before processing
           const canTrade = this.checkDailyStats();
-          const dailyStatsInfo = `Trades: ${this.dailyStats.trades}/${this.config.maxDailyTrades}, Loss: $${this.dailyStats.dailyLoss.toFixed(2)}/$${this.config.dailyLossLimit}`;
+          const dailyStatsInfo = `Trades: ${this.dailyStats.trades}, Loss: $${this.dailyStats.dailyLoss.toFixed(2)}`;
 
           logger.info(`📊 Daily stats check for ${position.id}: ${canTrade ? 'PASSED ✅' : 'FAILED ❌'}`);
           logger.info(`   ${dailyStatsInfo}`);
@@ -171,8 +160,8 @@ class FilteredCopyTrader {
 <b>Volume:</b> ${position.volume} lots
 
 <b>Daily Stats:</b>
-• Trades today: ${this.dailyStats.trades}/${this.config.maxDailyTrades}
-• Loss today: $${this.dailyStats.dailyLoss.toFixed(2)}/$${this.config.dailyLossLimit}
+• Trades today: ${this.dailyStats.trades}
+• Loss today: $${this.dailyStats.dailyLoss.toFixed(2)}
 
 <i>Trade rejected to protect daily limits</i>`);
           }
@@ -258,7 +247,7 @@ class FilteredCopyTrader {
 
           // Check daily stats before processing
           const canTrade = this.checkDailyStats();
-          const dailyStatsInfo = `Trades: ${this.dailyStats.trades}/${this.config.maxDailyTrades}, Loss: $${this.dailyStats.dailyLoss.toFixed(2)}/$${this.config.dailyLossLimit}`;
+          const dailyStatsInfo = `Trades: ${this.dailyStats.trades}, Loss: $${this.dailyStats.dailyLoss.toFixed(2)}`;
 
           logger.info(`📊 Daily stats check for missed trade ${position.id}: ${canTrade ? 'PASSED ✅' : 'FAILED ❌'}`);
           logger.info(`   ${dailyStatsInfo}`);
@@ -283,8 +272,8 @@ class FilteredCopyTrader {
 <b>Symbol:</b> ${position.symbol}
 
 <b>Daily Stats:</b>
-• Trades: ${this.dailyStats.trades}/${this.config.maxDailyTrades}
-• Loss: $${this.dailyStats.dailyLoss.toFixed(2)}/$${this.config.dailyLossLimit}
+• Trades: ${this.dailyStats.trades}
+• Loss: $${this.dailyStats.dailyLoss.toFixed(2)}
 
 <i>Trade rejected to protect daily limits</i>`);
           }
@@ -316,6 +305,7 @@ class FilteredCopyTrader {
 
   /**
    * Daily stats check (called by monitor events)
+   * NOTE: Daily loss limit enforcement removed - use frequency_filter or custom filter in JSON config
    */
   checkDailyStats() {
     const today = new Date().toDateString();
@@ -325,13 +315,8 @@ class FilteredCopyTrader {
       logger.info(`📅 New trading day started: ${today}`);
     }
 
-    // Check if we've hit daily loss limit
-    if (this.dailyStats.dailyLoss >= this.config.dailyLossLimit) {
-      logger.warn(`⚠️ Daily loss limit reached: $${this.dailyStats.dailyLoss}`);
-      return false; // Cannot trade
-    }
-
-    return true; // Can trade
+    // No hardcoded limits - all limits must come from JSON config filters
+    return true; // Always can trade unless blocked by config filters
   }
 
   /**
@@ -372,107 +357,55 @@ class FilteredCopyTrader {
 
   /**
    * Determine if a trade should be copied
+   * ALL validation now comes from JSON config filters - no hardcoded rules
    */
   async shouldCopyTrade(trade) {
     const reasons = [];
+    logger.info(`🔍 VALIDATION START for trade ${trade.id}`);
 
-    // 1. Check if we've already processed this trade
+    // CHECK #1: Duplicate prevention (essential - prevents reprocessing)
+    logger.info(`   1️⃣ Checking processed trades set (size: ${this.processedTrades.size})`);
     if (this.processedTrades.has(trade.id)) {
+      logger.warn(`   ❌ Duplicate: Trade ${trade.id} already processed`);
       logger.warn(`⏭️ Trade ${trade.id} SKIPPED - already processed (${this.processedTrades.size} trades in set)`);
       return false; // Silent skip - already processed
     }
+    logger.info(`   ✅ Not a duplicate - proceeding to filter checks`);
 
-    // 2. Check daily loss limit
-    if (this.dailyStats.dailyLoss >= this.config.dailyLossLimit * 0.8) {
-      reasons.push('Approaching daily loss limit');
-      tradeTracker.rejected(trade, reasons);
-      return false;
-    }
-
-    // 3. Check concurrent martingale cycles
-    if (this.activeMartingaleCycles.size >= this.config.maxConcurrentCycles) {
-      reasons.push('Max martingale cycles reached');
-      tradeTracker.rejected(trade, reasons);
-      return false;
-    }
-
-    // 4. Check time since last trade
-    const timeSinceLastTrade = Date.now() - this.lastTradeTime;
-    if (timeSinceLastTrade < this.config.minTimeBetweenTrades) {
-      reasons.push('Too soon after last trade');
-      tradeTracker.rejected(trade, reasons);
-      return false;
-    }
-
-    // 5. Check daily trade limit
-    if (this.dailyStats.trades >= this.config.maxDailyTrades) {
-      reasons.push('Daily trade limit reached');
-      tradeTracker.rejected(trade, reasons);
-      return false;
-    }
-
-    // 6. Check trading hours (skip if allowedHours is empty)
-    if (this.config.allowedHours.length > 0) {
-      const hour = new Date().getUTCHours();
-      if (!this.config.allowedHours.includes(hour)) {
-        reasons.push('Outside trading hours');
-        tradeTracker.rejected(trade, reasons);
-        return false;
-      }
-    }
-
-    // 7. Detect martingale pattern
-    if (this.isMartingalePattern(trade)) {
-      reasons.push('Martingale pattern detected');
-      tradeTracker.rejected(trade, reasons);
-      return false;
-    }
-
-    // 8. Check for grid pattern (multiple positions at similar prices)
-    if (await this.isGridPattern(trade)) {
-      reasons.push('Grid pattern detected');
-      tradeTracker.rejected(trade, reasons);
-      return false;
-    }
-
-    // ===== JSON CONFIG FILTER ENFORCEMENT =====
+    // ===== ALL VALIDATION FROM JSON CONFIG FILTERS =====
     // Apply filters from routing-config.json if activeFilters is configured
+    logger.info(`   Applying ${this.config.activeFilters?.length || 0} JSON config filters`);
     if (this.config.activeFilters && Array.isArray(this.config.activeFilters)) {
       for (const filter of this.config.activeFilters) {
+        logger.info(`   🔍 Checking filter: ${filter.name || filter.type}`);
         const filterResult = await this.applyFilter(filter, trade);
         if (!filterResult.passed) {
+          logger.warn(`   ❌ Filter ${filter.name || filter.type} FAILED: ${filterResult.reason}`);
           reasons.push(filterResult.reason);
           tradeTracker.rejected(trade, reasons);
+
+          // Send Telegram notification about filter rejection
+          await this.notify('notifyFilterRejection', trade, reasons);
           return false;
         }
+        logger.info(`   ✅ Filter ${filter.name || filter.type} PASSED`);
       }
     }
-    
+
     // Log decision with enhanced details
     const sourceNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId;
     const destNickname = this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId;
 
-    if (reasons.length > 0) {
-      logger.info(`❌ Trade REJECTED for route ${sourceNickname} → ${destNickname}:`);
-      logger.info(`   Trade ID: ${trade.id}`);
-      logger.info(`   Symbol: ${trade.symbol}`);
-      logger.info(`   Volume: ${trade.volume} lots`);
-      logger.info(`   Rejection reasons:`);
-      reasons.forEach(reason => logger.info(`   - ${reason}`));
-
-      // Send Telegram notification about filter rejection
-      await this.notify('notifyFilterRejection', trade, reasons);
-    } else {
-      logger.info(`✅ Trade ${trade.id} PASSED all filters for route ${sourceNickname} → ${destNickname}`);
-    }
-
-    return reasons.length === 0;
+    logger.info(`✅ Trade ${trade.id} PASSED all filters for route ${sourceNickname} → ${destNickname}`);
+    return true;
   }
 
   /**
    * Detect martingale pattern - repeated opens on same symbol with escalating lot sizes
+   * NOTE: This method is now ONLY called from volume_check filter in JSON config
+   * No longer called automatically - must be explicitly configured in filters
    */
-  isMartingalePattern(trade) {
+  isMartingalePattern(trade, maxVolumeMultiplier = 1.5) {
     const symbol = trade.symbol;
 
     // Get recent trades for this symbol
@@ -498,23 +431,12 @@ class FilteredCopyTrader {
     const lastTrade = recentTrades[recentTrades.length - 1];
 
     // Same direction and increasing volume = martingale
-    if (lastTrade.type === trade.type && trade.volume > lastTrade.volume * 1.5) {
+    if (lastTrade.type === trade.type && trade.volume > lastTrade.volume * maxVolumeMultiplier) {
       logger.info(`⚠️ Martingale pattern detected on ${symbol}:`);
       logger.info(`   Previous: ${lastTrade.volume} lots`);
       logger.info(`   Current: ${trade.volume} lots (${((trade.volume / lastTrade.volume - 1) * 100).toFixed(1)}% increase)`);
       logger.info(`   Pattern: Repeated opens with escalating size`);
       return true;
-    }
-
-    // Check for rapid-fire same direction trades (3+ in 30 min)
-    const thirtyMinAgo = Date.now() - (30 * 60 * 1000);
-    const rapidTrades = recentTrades.filter(t =>
-      t.timestamp > thirtyMinAgo && t.type === trade.type
-    );
-
-    if (rapidTrades.length >= 2) {
-      logger.info(`⚠️ Potential martingale: ${rapidTrades.length + 1} ${trade.type} trades on ${symbol} in 30 minutes`);
-      // Don't reject yet, but log it
     }
 
     // Record this trade
@@ -524,23 +446,12 @@ class FilteredCopyTrader {
   }
 
   /**
-   * Detect grid pattern
+   * Detect grid pattern (multiple positions at similar prices)
+   * NOTE: This method is no longer used - grid detection removed
+   * Keep for backward compatibility but does nothing
    */
   async isGridPattern(trade) {
-    // Get all open positions on source account
-    const sourcePositions = await unifiedPoolClient.getPositions(this.sourceAccountId, 'london');
-    
-    // Check if there are multiple positions at similar prices
-    const similarPricePositions = sourcePositions.filter(pos => {
-      if (pos.symbol !== trade.symbol) return false;
-      
-      const priceDiff = Math.abs(pos.openPrice - trade.openPrice);
-      const pipDiff = trade.symbol.includes('JPY') ? priceDiff * 100 : priceDiff * 10000;
-      
-      return pipDiff < this.config.priceRangeFilter;
-    });
-    
-    return similarPricePositions.length > 1;
+    return false; // Grid detection disabled - must use JSON config filters if needed
   }
 
   /**
@@ -828,19 +739,15 @@ class FilteredCopyTrader {
   }
 
   /**
-   * Calculate stop loss with buffer
+   * Calculate stop loss
+   * NOTE: Hardcoded buffer removed - SL copied directly from source or account defaults
    */
   calculateStopLoss(trade) {
     const pipSize = trade.symbol.includes('JPY') ? 0.01 : 0.0001;
-    const buffer = this.config.stopLossBuffer;
 
-    // If trade has SL, use it with buffer
+    // If trade has SL, use it directly (no buffer)
     if (trade.stopLoss) {
-      if (trade.type === 'POSITION_TYPE_BUY') {
-        return trade.stopLoss - (buffer * pipSize);
-      } else {
-        return trade.stopLoss + (buffer * pipSize);
-      }
+      return trade.stopLoss;
     }
 
     // Check for account-level default SL (percentage-based)
@@ -869,19 +776,15 @@ class FilteredCopyTrader {
   }
 
   /**
-   * Calculate take profit with buffer
+   * Calculate take profit
+   * NOTE: Hardcoded buffer removed - TP copied directly from source or account defaults
    */
   calculateTakeProfit(trade) {
     const pipSize = trade.symbol.includes('JPY') ? 0.01 : 0.0001;
-    const buffer = this.config.takeProfitBuffer;
 
-    // If trade has TP, use it with buffer
+    // If trade has TP, use it directly (no buffer)
     if (trade.takeProfit) {
-      if (trade.type === 'POSITION_TYPE_BUY') {
-        return trade.takeProfit + (buffer * pipSize);
-      } else {
-        return trade.takeProfit - (buffer * pipSize);
-      }
+      return trade.takeProfit;
     }
 
     // Check for account-level default TP (percentage-based)

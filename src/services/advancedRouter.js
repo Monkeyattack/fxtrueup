@@ -116,9 +116,10 @@ class AdvancedRouter {
 
   /**
    * Apply rule set to trader
+   * NOTE: All hardcoded validation removed - ONLY applies sizing config and filters
    */
   applyRuleSet(trader, ruleSet, filterDefinitions) {
-    // Apply basic settings
+    // Apply position sizing configuration (the ONLY non-filter config)
     if (ruleSet.type === 'proportional') {
       trader.config.multiplier = ruleSet.multiplier;
       trader.config.fixedLotSize = null;
@@ -129,21 +130,7 @@ class AdvancedRouter {
       trader.config.dynamicSizing = ruleSet;
     }
 
-    // Apply limits
-    if (ruleSet.maxDailyTrades !== undefined) {
-      trader.config.maxDailyTrades = ruleSet.maxDailyTrades;
-    }
-    if (ruleSet.maxDailyLoss !== undefined) {
-      trader.config.dailyLossLimit = ruleSet.maxDailyLoss;
-    }
-    if (ruleSet.minTimeBetweenTrades !== undefined) {
-      trader.config.minTimeBetweenTrades = ruleSet.minTimeBetweenTrades;
-    }
-    if (ruleSet.maxOpenPositions !== undefined) {
-      trader.config.maxOpenPositions = ruleSet.maxOpenPositions;
-    }
-
-    // Apply filters
+    // Apply filters from JSON config
     if (ruleSet.filters && Array.isArray(ruleSet.filters)) {
       trader.config.activeFilters = ruleSet.filters.map(filterName => {
         const filter = filterDefinitions[filterName];
@@ -153,6 +140,12 @@ class AdvancedRouter {
         }
         return { name: filterName, ...filter };
       }).filter(f => f !== null);
+
+      logger.info(`📋 Applied ${trader.config.activeFilters.length} filters to route ${trader.routeName || trader.routeId}`);
+    } else {
+      // Empty filters array means NO filtering
+      trader.config.activeFilters = [];
+      logger.info(`📋 No filters configured for route ${trader.routeName || trader.routeId} - all trades will be copied`);
     }
   }
 
@@ -249,9 +242,9 @@ ${filterList}`;
       notifyExitCopied: async (mapping, closeInfo, result) => {
         if (!trader.notifications.onCopy) return;
 
-        const profit = result.profit || closeInfo.profit || 0;
+        const profit = result.profit || closeInfo?.profit || 0;
         const profitEmoji = profit >= 0 ? '💰' : '📉';
-        const reason = closeInfo.reason || 'CLOSED';
+        const reason = closeInfo?.reason || 'CLOSED';
 
         const message = `<b>${profitEmoji} POSITION CLOSED & COPIED</b>
 
@@ -400,16 +393,15 @@ ${filterList}`;
 
   /**
    * Check health of all routes
+   * NOTE: Hardcoded limit checks removed - health monitoring is informational only
    */
   checkRouteHealth() {
     for (const [routeId, { trader, route }] of this.routes) {
       const stats = trader.getStats();
       this.stats.set(routeId, stats);
 
-      // Check if route is still healthy
-      if (stats.dailyLoss > trader.config.dailyLossLimit * 0.9) {
-        logger.warn(`⚠️ Route ${route.name} approaching daily loss limit`);
-      }
+      // Informational logging only - no hardcoded checks
+      logger.debug(`📊 Route ${route.name}: ${stats.dailyTrades} trades, $${stats.dailyLoss.toFixed(2)} loss today`);
     }
   }
 

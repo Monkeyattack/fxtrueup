@@ -114,6 +114,12 @@ Direct SSH editing causes:
 ## Development Principles
 - Never Ever ever load fake data if real data is unavailabe.  Ever
 
+## Sister Projects
+See `~/.claude/PROJECTS.md` for cross-project references:
+- **meta-trader-hub**: Advanced multi-platform trading system with connection pooling
+- **Shared Infrastructure**: MetaAPI SDK, Vault patterns, PM2 best practices
+- **Learning Opportunities**: Advanced connection pool implementation (70-90% cost savings)
+
 ## Workflow Enforcement
 
 This project has the following safeguards to prevent SSH editing mistakes:
