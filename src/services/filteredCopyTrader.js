@@ -994,7 +994,9 @@ class FilteredCopyTrader {
 
     // Check SL distance if configured
     const slDistance = Math.abs(trade.openPrice - trade.stopLoss);
-    const slPips = trade.symbol.includes('JPY') ? slDistance * 100 : slDistance * 10000;
+    const slPips = (trade.symbol.includes('JPY') || trade.symbol.includes('XAU') || trade.symbol.includes('XAG'))
+      ? slDistance * 100
+      : slDistance * 10000;
 
     if (filter.minSLDistance && slPips < filter.minSLDistance) {
       return { passed: false, reason: `Stop loss too tight: ${slPips.toFixed(1)} pips < ${filter.minSLDistance} min` };
