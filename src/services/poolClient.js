@@ -7,7 +7,7 @@ import { logger } from '../utils/logger.js';
  * instead of creating direct MetaAPI connections
  */
 class PoolClient {
-  constructor(poolUrl = process.env.POOL_API_URL || 'http://localhost:8087') {
+  constructor(poolUrl = process.env.POOL_API_URL || 'http://localhost:8086') {
     this.poolUrl = poolUrl;
     this.client = axios.create({
       baseURL: poolUrl,
@@ -443,8 +443,20 @@ class PoolClient {
       this.accountCircuitBreakers.set(accountId, breaker);
     }
 
+    const now = Date.now();
+    const timeSinceLastFailure = now - breaker.lastFailure;
+
+    // Reset failure count if last failure was more than 30 seconds ago
+    // This prevents rapid failures during pool initialization from triggering circuit breaker
+    if (timeSinceLastFailure > 30000) {
+      logger.debug(`Resetting failure count for ${accountId.slice(0, 8)} (${timeSinceLastFailure}ms since last failure)`);
+      breaker.failures = 0;
+    }
+
     breaker.failures++;
-    breaker.lastFailure = Date.now();
+    breaker.lastFailure = now;
+
+    logger.debug(`Account ${accountId.slice(0, 8)} failure #${breaker.failures} (${timeSinceLastFailure}ms since last)`);
 
     if (breaker.failures >= 3 && !breaker.isPaused) {
       breaker.isPaused = true;
