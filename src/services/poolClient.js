@@ -58,12 +58,7 @@ class PoolClient {
   }
 
   async getPositions(accountId, region = 'new-york') {
-    // Check circuit breaker
-    if (this.isAccountPaused(accountId)) {
-      logger.debug(`⏸️  Account ${accountId.slice(0, 8)} paused due to failures, skipping request`);
-      return [];
-    }
-
+    // DON'T pause requests - just track failures for alert spam prevention
     try {
       const response = await this.client.get(`/positions/${accountId}`, {
         params: { region }
@@ -77,8 +72,15 @@ class PoolClient {
     } catch (error) {
       logger.error(`Failed to get positions for ${accountId}: ${error.message}`);
 
-      // Record failure and check if should pause
-      this.recordFailure(accountId);
+      // ECONNREFUSED means connection pool is restarting - don't count as broker failure
+      const isConnectionRefused = error.code === 'ECONNREFUSED' || error.message.includes('ECONNREFUSED');
+
+      if (isConnectionRefused) {
+        logger.info(`⏸️ Connection pool unavailable (restarting), not counting as failure`);
+      } else {
+        // Record failure for spam prevention (doesn't block future requests)
+        this.recordFailure(accountId);
+      }
 
       return [];
     }
@@ -398,25 +400,22 @@ class PoolClient {
   // ============= CIRCUIT BREAKER =============
 
   /**
-   * Check if account is paused due to failures
+   * Check if we should send an alert for this account
+   * Returns true if alert was recently sent (within cooldown period)
    */
-  isAccountPaused(accountId) {
+  shouldSuppressAlert(accountId) {
     const breaker = this.accountCircuitBreakers.get(accountId);
     if (!breaker) return false;
 
-    // Auto-resume after 5 minutes
-    if (breaker.isPaused) {
+    // Suppress alerts for 5 minutes after sending one
+    if (breaker.alertSent && breaker.lastAlertTime) {
       const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-      if (breaker.lastFailure < fiveMinutesAgo) {
-        logger.info(`▶️  Resuming account ${accountId.slice(0, 8)} after 5-minute cooldown`);
-        breaker.isPaused = false;
-        breaker.failures = 0;
-        breaker.alertSent = false; // Reset alert flag
-        return false;
+      if (breaker.lastAlertTime > fiveMinutesAgo) {
+        return true; // Still in cooldown, suppress alert
       }
     }
 
-    return breaker.isPaused;
+    return false;
   }
 
   /**
@@ -427,19 +426,20 @@ class PoolClient {
     if (breaker && breaker.failures > 0) {
       logger.info(`✅ Account ${accountId.slice(0, 8)} recovered (was ${breaker.failures} failures)`);
       breaker.failures = 0;
-      breaker.isPaused = false;
       breaker.alertSent = false; // Reset alert flag on recovery
+      breaker.lastAlertTime = null;
     }
   }
 
   /**
-   * Record failed request and pause if threshold reached
+   * Record failed request - tracks failures for alert spam prevention
+   * NOTE: Does NOT block trading operations, only controls alert frequency
    */
   recordFailure(accountId) {
     let breaker = this.accountCircuitBreakers.get(accountId);
 
     if (!breaker) {
-      breaker = { failures: 0, isPaused: false, lastFailure: Date.now(), alertSent: false };
+      breaker = { failures: 0, lastFailure: Date.now(), alertSent: false, lastAlertTime: null };
       this.accountCircuitBreakers.set(accountId, breaker);
     }
 
@@ -447,7 +447,7 @@ class PoolClient {
     const timeSinceLastFailure = now - breaker.lastFailure;
 
     // Reset failure count if last failure was more than 30 seconds ago
-    // This prevents rapid failures during pool initialization from triggering circuit breaker
+    // This prevents rapid failures during pool initialization from triggering alerts
     if (timeSinceLastFailure > 30000) {
       logger.debug(`Resetting failure count for ${accountId.slice(0, 8)} (${timeSinceLastFailure}ms since last failure)`);
       breaker.failures = 0;
@@ -458,19 +458,17 @@ class PoolClient {
 
     logger.debug(`Account ${accountId.slice(0, 8)} failure #${breaker.failures} (${timeSinceLastFailure}ms since last)`);
 
-    if (breaker.failures >= 3 && !breaker.isPaused) {
-      breaker.isPaused = true;
-
+    // Send alert after 3 consecutive failures, but only once per 5 minutes
+    if (breaker.failures >= 3 && !this.shouldSuppressAlert(accountId)) {
       const accountNickname = this.getAccountNickname(accountId);
 
-      logger.error(`🚨 CIRCUIT BREAKER TRIGGERED for ${accountNickname} (${accountId.slice(0, 8)})`);
-      logger.error(`   Failed 3 times in a row - pausing requests for 5 minutes`);
+      logger.error(`⚠️ CONNECTION ISSUES for ${accountNickname} (${accountId.slice(0, 8)})`);
+      logger.error(`   Failed ${breaker.failures} times in a row`);
 
-      // Send Telegram alert ONLY if not already sent
-      if (!breaker.alertSent) {
-        this.sendCircuitBreakerAlert(accountId, accountNickname);
-        breaker.alertSent = true;
-      }
+      // Send Telegram alert (will be suppressed for 5 minutes after this)
+      this.sendConnectionIssueAlert(accountId, accountNickname, breaker.failures);
+      breaker.alertSent = true;
+      breaker.lastAlertTime = now;
     }
   }
 
@@ -496,42 +494,49 @@ class PoolClient {
   }
 
   /**
-   * Send Telegram alert about circuit breaker
+   * Send Telegram alert about connection issues
+   * Alert will be suppressed for 5 minutes to prevent spam
    */
-  async sendCircuitBreakerAlert(accountId, nickname) {
+  async sendConnectionIssueAlert(accountId, nickname, failureCount) {
     try {
       const telegram = (await import('../utils/telegram.js')).default;
 
-      const message = `<b>🚨 CIRCUIT BREAKER TRIGGERED</b>
+      const message = `<b>⚠️ CONNECTION ISSUES DETECTED</b>
 
 <b>Account:</b> ${nickname}
 <b>ID:</b> ${accountId}
-<b>Reason:</b> 3 consecutive failures
+<b>Failures:</b> ${failureCount} consecutive
 
-<b>Action:</b> Account paused for 5 minutes
-<b>Will auto-resume:</b> ${new Date(Date.now() + 5 * 60 * 1000).toLocaleTimeString()}
+<b>Status:</b> Continuing to attempt connections
+<b>Next alert:</b> ${new Date(Date.now() + 5 * 60 * 1000).toLocaleTimeString()} (if still failing)
 
-<i>Check account connection and broker status.</i>`;
+<i>Trading operations continue. Check account connection and broker status if issues persist.</i>`;
 
       await telegram.sendMessage(message);
+      logger.info(`📨 Sent connection issue alert for ${nickname} (next alert suppressed for 5 min)`);
     } catch (error) {
-      logger.error(`Failed to send circuit breaker alert: ${error.message}`);
+      logger.error(`Failed to send connection issue alert: ${error.message}`);
     }
   }
 
   /**
-   * Get circuit breaker status for all accounts
+   * Get connection health status for all accounts
    */
   getCircuitBreakerStatus() {
     const status = [];
 
     for (const [accountId, breaker] of this.accountCircuitBreakers.entries()) {
-      if (breaker.failures > 0 || breaker.isPaused) {
+      if (breaker.failures > 0) {
+        const alertCooldown = breaker.lastAlertTime
+          ? Math.max(0, 300 - Math.floor((Date.now() - breaker.lastAlertTime) / 1000))
+          : 0;
+
         status.push({
           accountId: accountId.slice(0, 8),
           failures: breaker.failures,
-          isPaused: breaker.isPaused,
-          lastFailure: new Date(breaker.lastFailure).toISOString()
+          lastFailure: new Date(breaker.lastFailure).toISOString(),
+          alertSuppressed: this.shouldSuppressAlert(accountId),
+          alertCooldownSeconds: alertCooldown
         });
       }
     }
