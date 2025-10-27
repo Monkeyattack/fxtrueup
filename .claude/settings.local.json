@@ -86,7 +86,14 @@
       "Bash(env)",
       "Bash(gh release list:*)",
       "Bash(awk:*)",
-      "Read(//home/claude-dev/.claude/**)"
+      "Read(//home/claude-dev/.claude/**)",
+      "Read(//home/claude-dev/repos/tradecalc/src/tradecalc/services/**)",
+      "Read(//home/claude-dev/repos/tradecalc/src/tradecalc/models/**)",
+      "Read(//home/claude-dev/repos/tradecalc/src/tradecalc/data/**)",
+      "Bash(zcat:*)",
+      "Bash(for f in /home/claude-dev/repos/meta-trader-hub/backend/unified_signals_202510230*.json)",
+      "Bash(do echo \"=== $f ===\")",
+      "Bash(done)"
     ],
     "deny": [],
     "additionalDirectories": [

@@ -49,7 +49,7 @@ export const ACCOUNT_CONFIGS = {
 
   // FTMO Challenge 100k
   FTMO_CHALLENGE_100K: {
-    id: 'bb106d21-d303-4e06-84fd-e6a21d20cec9',
+    id: '7194816f-c897-4e89-a19a-d8af3c9b0c38',
     name: 'FTMO Challange 100k 551',
     region: 'london',
     type: 'target',

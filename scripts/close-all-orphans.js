@@ -13,7 +13,7 @@ const poolClient = axios.create({
 const accounts = [
   { id: 'b90a1029-9ef4-4db5-be87-97fd148fe341', nickname: 'LiveCopyFromGold', region: 'london' },
   { id: 'cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d', nickname: 'AlphaTraderInstant060', region: 'new-york' },
-  { id: 'bb106d21-d303-4e06-84fd-e6a21d20cec9', nickname: 'FTMO Challenge 100k', region: 'london' },
+  { id: '7194816f-c897-4e89-a19a-d8af3c9b0c38', nickname: 'FTMO Challenge 100k', region: 'london' },
   { id: 'hola_C62330', nickname: 'HolaPrimeProp50k', region: 'demo' }
 ];
 

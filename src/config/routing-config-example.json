@@ -66,7 +66,7 @@
         "eaTradingDisclosed": true
       }
     },
-    "bb106d21-d303-4e06-84fd-e6a21d20cec9": {
+    "7194816f-c897-4e89-a19a-d8af3c9b0c38": {
       "nickname": "FTMO Challenge 100k 551",
       "region": "london",
       "type": "destination",
@@ -576,7 +576,7 @@
       "enabled": true,
       "name": "PropFirmKid to FTMO Challenge 100k",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
-      "destination": "bb106d21-d303-4e06-84fd-e6a21d20cec9",
+      "destination": "7194816f-c897-4e89-a19a-d8af3c9b0c38",
       "ruleSet": "ftmo_standard_100k",
       "description": "Main EA to FTMO 1-step challenge with full compliance",
       "notifications": {

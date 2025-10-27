@@ -195,6 +195,79 @@ class RedisManager {
   }
 
   /**
+   * Queue a pending exit (for exits that failed due to connection issues)
+   */
+  async queuePendingExit(sourceAccountId, sourcePositionId, mapping) {
+    const client = await this.getClient();
+    const key = `exit:pending:${sourceAccountId}:${sourcePositionId}`;
+
+    const exitData = {
+      ...mapping,
+      queuedAt: new Date().toISOString(),
+      retryCount: 0
+    };
+
+    // Store with 48-hour TTL (gives plenty of retry time)
+    await client.setex(key, 48 * 60 * 60, JSON.stringify(exitData));
+
+    logger.info(`📥 Queued pending exit: ${key}`);
+    return true;
+  }
+
+  /**
+   * Get all pending exits for retry
+   */
+  async getPendingExits() {
+    const client = await this.getClient();
+    const pattern = 'exit:pending:*';
+
+    const keys = await client.keys(pattern);
+    const pendingExits = [];
+
+    for (const key of keys) {
+      const data = await client.get(key);
+      if (data) {
+        const exitData = JSON.parse(data);
+
+        // Increment retry count
+        exitData.retryCount = (exitData.retryCount || 0) + 1;
+        await client.setex(key, 48 * 60 * 60, JSON.stringify(exitData));
+
+        pendingExits.push({
+          key,
+          mapping: exitData,
+          queuedAt: exitData.queuedAt,
+          retryCount: exitData.retryCount
+        });
+      }
+    }
+
+    return pendingExits;
+  }
+
+  /**
+   * Remove exit from pending queue (after successful close)
+   */
+  async removePendingExit(sourceAccountId, sourcePositionId) {
+    const client = await this.getClient();
+    const key = `exit:pending:${sourceAccountId}:${sourcePositionId}`;
+
+    await client.del(key);
+    logger.info(`✅ Removed pending exit from queue: ${key}`);
+  }
+
+  /**
+   * Check if exit is already queued (prevent duplicates)
+   */
+  async isPendingExit(sourceAccountId, sourcePositionId) {
+    const client = await this.getClient();
+    const key = `exit:pending:${sourceAccountId}:${sourcePositionId}`;
+
+    const exists = await client.exists(key);
+    return exists === 1;
+  }
+
+  /**
    * Close connection
    */
   async disconnect() {

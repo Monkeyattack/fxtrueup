@@ -36,7 +36,7 @@ async function testEventDrivenCopy() {
 
   try {
     // Initialize with source and destination accounts
-    const sourceAccountId = 'bb106d21-d303-4e06-84fd-e6a21d20cec9'; // Demo source account
+    const sourceAccountId = '7194816f-c897-4e89-a19a-d8af3c9b0c38'; // Demo source account
     const destAccountId = '4019e233-89b6-4c36-8df0-3f24381d95ad';   // Demo destination account
 
     await copyTrader.initialize(sourceAccountId, destAccountId, 'new-york');

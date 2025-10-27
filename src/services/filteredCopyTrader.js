@@ -5,6 +5,7 @@
 
 import unifiedPoolClient from './unifiedPoolClient.js';
 import positionMapper from './positionMapper.js';
+import redisManager from './redisManager.js';
 import { logger } from '../utils/logger.js';
 import { tradeTracker } from '../utils/tradeTracker.js';
 import telegram from '../utils/telegram.js';
@@ -27,8 +28,13 @@ class FilteredCopyTrader {
     this.lastTradeTime = 0;
     this.tradeTimestamps = []; // Track timestamps for frequency checking
 
+    // Connection state tracking
+    this.lastSuccessfulFetch = Date.now();
+    this.consecutiveFailures = 0;
+
     // Polling state
     this.pollingInterval = null;
+    this.pendingExitInterval = null; // For pending exit processor
     this.pollRate = 5000; // 5 seconds - only check source for new positions
 
     // Notification methods (can be overridden by advancedRouter)
@@ -61,31 +67,55 @@ class FilteredCopyTrader {
 
     // Register gap detection callback for reconnection events
     try {
-      await unifiedPoolClient.registerReconnectionCallback(
+      const registered = await unifiedPoolClient.registerReconnectionCallback(
         this.checkForMissedTrades.bind(this)
       );
-      logger.info('📡 Registered reconnection callback for gap detection');
+      if (registered) {
+        logger.info('📡 Registered reconnection callback for gap detection');
+      } else {
+        logger.warn('⚠️ Could not register reconnection callback: endpoint not available');
+        logger.warn('   Gap detection will not be available');
+      }
     } catch (error) {
       logger.warn(`⚠️ Could not register reconnection callback: ${error.message}`);
       logger.warn('   Gap detection will not be available');
     }
 
-    // Initial sync of source positions only
-    const initialPositions = await unifiedPoolClient.getPositions(this.sourceAccountId, this.sourceRegion);
-    const copyExisting = this.copyExistingPositions || this.routeConfig?.copyExistingPositions || false;
+    // Initial sync of source positions only - with startup delay to avoid circuit breaker
+    try {
+      logger.info('⏳ Waiting 3s for connection pool initialization...');
+      await this.sleep(3000); // Give pool time to initialize on startup
 
-    initialPositions.forEach(pos => {
-      this.sourcePositions.set(pos.id, pos);
-      // Mark existing positions as already processed UNLESS copyExistingPositions is true
-      if (!copyExisting) {
-        this.processedTrades.add(pos.id);
-        this.seenTrades.add(pos.id); // CRITICAL: Also mark as seen to prevent re-detection on restart
-      }
-    });
-    logger.info(`📊 Initial source positions: ${initialPositions.length}${copyExisting ? ' (will copy existing)' : ' (skipping existing)'}`);
+      const initialPositions = await unifiedPoolClient.getPositions(this.sourceAccountId, this.sourceRegion);
+      const copyExisting = this.copyExistingPositions || this.routeConfig?.copyExistingPositions || false;
+
+      initialPositions.forEach(pos => {
+        this.sourcePositions.set(pos.id, pos);
+        // Mark existing positions as already processed UNLESS copyExistingPositions is true
+        if (!copyExisting) {
+          this.processedTrades.add(pos.id);
+          this.seenTrades.add(pos.id); // CRITICAL: Also mark as seen to prevent re-detection on restart
+        }
+      });
+      logger.info(`📊 Initial source positions: ${initialPositions.length}${copyExisting ? ' (will copy existing)' : ' (skipping existing)'}`);
+
+      // Mark successful fetch
+      this.lastSuccessfulFetch = Date.now();
+      this.consecutiveFailures = 0;
+    } catch (error) {
+      logger.warn(`⚠️ Initial position sync failed: ${error.message}`);
+      logger.warn('   Will retry on first poll interval');
+      // Don't let this block startup - polling will catch up
+    }
 
     // Start simple polling of source account
     this.startPolling();
+
+    // Start pending exit processor (every 30 seconds)
+    this.pendingExitInterval = setInterval(async () => {
+      await this.processPendingExits();
+    }, 30000);
+    logger.info('📥 Pending exit processor started (30s interval)');
 
     logger.info('✅ Copy trader started successfully');
   }
@@ -109,6 +139,11 @@ class FilteredCopyTrader {
   async checkSourcePositions() {
     try {
       const currentPositions = await unifiedPoolClient.getPositions(this.sourceAccountId, this.sourceRegion);
+
+      // ✅ Fetch succeeded - update connection state
+      this.lastSuccessfulFetch = Date.now();
+      this.consecutiveFailures = 0;
+
       const currentPositionMap = new Map(currentPositions.map(p => [p.id, p]));
 
       // Check for new positions
@@ -178,10 +213,34 @@ class FilteredCopyTrader {
           const mapping = await positionMapper.getMapping(this.sourceAccountId, posId);
 
           if (mapping) {
-            // Copy the exit to destination
-            await this.copyPositionExit(mapping, null);
+            // Try to close immediately
+            const result = await this.copyPositionExit(mapping, null);
+
+            if (!result.success && this.isConnectionError(result.error)) {
+              // Connection issue - queue for later retry
+              await redisManager.queuePendingExit(this.sourceAccountId, posId, mapping);
+              logger.warn(`📥 Queued exit for retry: ${posId} (reason: ${result.error})`);
+
+              // Send Telegram alert
+              await telegram.sendMessage(`<b>📥 Exit Queued for Retry</b>
+
+<b>Source Position:</b> ${posId}
+<b>Destination Position:</b> ${mapping.destPositionId}
+<b>Symbol:</b> ${mapping.sourceSymbol}
+<b>Reason:</b> ${result.error}
+
+<i>Will retry every 30 seconds until successful</i>`);
+            }
           } else {
-            logger.warn(`⚠️ No mapping found for closed position ${posId}`);
+            logger.error(`❌ CRITICAL: No mapping for closed position ${posId}`);
+
+            // Send alert - this should never happen
+            await telegram.sendMessage(`<b>❌ CRITICAL ERROR</b>
+
+<b>Source Position Closed:</b> ${posId}
+<b>NO MAPPING FOUND</b>
+
+<i>Manual intervention required - orphan position may exist</i>`);
           }
 
           // Remove from tracked positions
@@ -189,6 +248,14 @@ class FilteredCopyTrader {
         }
       }
     } catch (error) {
+      // ❌ Fetch failed - update connection state
+      this.consecutiveFailures++;
+
+      if (this.consecutiveFailures >= 3) {
+        logger.warn(`⚠️ Connection pool down (${this.consecutiveFailures} failures) - skipping exit detection until reconnect`);
+        return; // Don't process closes during outage
+      }
+
       logger.error(`Error checking source positions: ${error.message}`);
     }
   }
@@ -291,6 +358,74 @@ class FilteredCopyTrader {
   }
 
   /**
+   * Process queued exits that failed due to connection issues
+   * Run every 30 seconds
+   */
+  async processPendingExits() {
+    try {
+      const pendingExits = await redisManager.getPendingExits();
+
+      if (pendingExits.length === 0) return;
+
+      logger.info(`🔄 Processing ${pendingExits.length} pending exit(s)`);
+
+      for (const exit of pendingExits) {
+        try {
+          const mapping = exit.mapping;
+          const queuedDuration = ((Date.now() - new Date(exit.queuedAt).getTime()) / 1000).toFixed(0);
+
+          logger.info(`   ⏳ Retry attempt ${exit.retryCount} for ${mapping.destPositionId} (queued ${queuedDuration}s ago)`);
+
+          const result = await this.copyPositionExit(mapping, null);
+
+          if (result.success) {
+            await redisManager.removePendingExit(
+              mapping.sourceAccountId,
+              mapping.sourcePositionId
+            );
+            logger.info(`   ✅ Pending exit processed successfully: ${mapping.destPositionId}`);
+
+            // Send success notification
+            await telegram.sendMessage(`<b>✅ Queued Exit Processed</b>
+
+<b>Destination Position:</b> ${mapping.destPositionId}
+<b>Symbol:</b> ${mapping.sourceSymbol}
+<b>Retry Attempts:</b> ${exit.retryCount}
+<b>Queue Duration:</b> ${queuedDuration}s
+
+<i>Position closed successfully after retry</i>`);
+          } else if (!this.isConnectionError(result.error)) {
+            // Non-connection error - remove from queue and alert
+            await redisManager.removePendingExit(
+              mapping.sourceAccountId,
+              mapping.sourcePositionId
+            );
+            logger.error(`   ❌ Pending exit failed permanently: ${result.error}`);
+
+            // Send failure notification
+            await telegram.sendMessage(`<b>❌ Queued Exit Failed Permanently</b>
+
+<b>Destination Position:</b> ${mapping.destPositionId}
+<b>Symbol:</b> ${mapping.sourceSymbol}
+<b>Error:</b> ${result.error}
+<b>Retry Attempts:</b> ${exit.retryCount}
+
+<i>Manual intervention may be required</i>`);
+          } else {
+            // Still connection error - leave in queue for next retry
+            logger.warn(`   ⚠️ Pending exit still has connection issues - will retry: ${result.error}`);
+          }
+
+        } catch (error) {
+          logger.error(`   ❌ Error processing pending exit:`, error.message);
+        }
+      }
+    } catch (error) {
+      logger.error(`Error in processPendingExits:`, error.message);
+    }
+  }
+
+  /**
    * Stop the copy trader
    */
   stop() {
@@ -298,6 +433,12 @@ class FilteredCopyTrader {
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
+    }
+
+    // Stop pending exit processor
+    if (this.pendingExitInterval) {
+      clearInterval(this.pendingExitInterval);
+      this.pendingExitInterval = null;
     }
 
     logger.info('🛑 Copy trader stopped');
@@ -732,6 +873,29 @@ class FilteredCopyTrader {
   }
 
   /**
+   * Check if error is a connection error (for pending exit queue)
+   */
+  isConnectionError(errorMessage) {
+    if (!errorMessage) return false;
+
+    const connectionPatterns = [
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'Connection refused',
+      'no response',
+      'socket hang up',
+      'network',
+      'Pool API no response'
+    ];
+
+    const errorLower = errorMessage.toLowerCase();
+    return connectionPatterns.some(pattern =>
+      errorLower.includes(pattern.toLowerCase())
+    );
+  }
+
+  /**
    * Sleep helper
    */
   sleep(ms) {
@@ -814,6 +978,7 @@ class FilteredCopyTrader {
 
   /**
    * Copy position exit to destination account with retry logic
+   * Returns { success: boolean, error?: string }
    */
   async copyPositionExit(mapping, closeInfo) {
     const maxRetries = 3;
@@ -846,7 +1011,7 @@ class FilteredCopyTrader {
           if (attempt === maxRetries) {
             logger.warn(`⚠️ Destination position ${mapping.destPositionId} not found after ${maxRetries} attempts - assuming closed`);
             await positionMapper.deleteMapping(mapping.sourceAccountId, mapping.sourcePositionId);
-            return;
+            return { success: true }; // Consider it success if position is already closed
           } else {
             // Retry - might be connection issue
             throw new Error('Position not found in response - retrying');
@@ -894,7 +1059,7 @@ class FilteredCopyTrader {
           await positionMapper.deleteMapping(mapping.sourceAccountId, mapping.sourcePositionId);
 
           // Success - exit retry loop
-          return;
+          return { success: true };
         } else {
           // Close failed - retry
           const errorMsg = closeResult.error || 'Unknown error';
@@ -908,7 +1073,7 @@ class FilteredCopyTrader {
           } else {
             // Non-retryable or last attempt
             await this.notify('notifyExitCopyFailure', mapping, errorMsg);
-            return;
+            return { success: false, error: errorMsg };
           }
         }
       } catch (error) {
@@ -925,10 +1090,12 @@ class FilteredCopyTrader {
           // Non-retryable or last attempt failed
           logger.error(`❌ Failed to copy exit after ${attempt} attempts`);
           await this.notify('notifyExitCopyFailure', mapping, error.message);
-          return;
+          return { success: false, error: error.message };
         }
       }
     }
+
+    return { success: false, error: 'Max retries exceeded' };
   }
 
   /**
@@ -994,9 +1161,14 @@ class FilteredCopyTrader {
 
     // Check SL distance if configured
     const slDistance = Math.abs(trade.openPrice - trade.stopLoss);
-    const slPips = (trade.symbol.includes('JPY') || trade.symbol.includes('XAU') || trade.symbol.includes('XAG'))
-      ? slDistance * 100
-      : slDistance * 10000;
+    // For gold/silver: 1 point = $1, so no multiplication needed
+    // For JPY pairs: 1 pip = 0.01, so multiply by 100
+    // For standard forex: 1 pip = 0.0001, so multiply by 10000
+    const slPips = trade.symbol.includes('XAU') || trade.symbol.includes('XAG')
+      ? slDistance * 1  // Gold/silver: measure in points (dollars)
+      : trade.symbol.includes('JPY')
+      ? slDistance * 100  // JPY pairs: 2 decimal places
+      : slDistance * 10000;  // Standard forex: 4 decimal places
 
     if (filter.minSLDistance && slPips < filter.minSLDistance) {
       return { passed: false, reason: `Stop loss too tight: ${slPips.toFixed(1)} pips < ${filter.minSLDistance} min` };

@@ -15,9 +15,9 @@ const orphans = [
   { accountId: 'b90a1029-9ef4-4db5-be87-97fd148fe341', positionId: '51674260', symbol: 'XAUUSD', region: 'london' },
 
   // FTMO Challenge 100k (bb106d21)
-  { accountId: 'bb106d21-d303-4e06-84fd-e6a21d20cec9', positionId: '71757041', symbol: 'XAUUSD', region: 'london' },
-  { accountId: 'bb106d21-d303-4e06-84fd-e6a21d20cec9', positionId: '71764112', symbol: 'XAUUSD', region: 'london' },
-  { accountId: 'bb106d21-d303-4e06-84fd-e6a21d20cec9', positionId: '71766740', symbol: 'ETHUSD', region: 'london' },
+  { accountId: '7194816f-c897-4e89-a19a-d8af3c9b0c38', positionId: '71757041', symbol: 'XAUUSD', region: 'london' },
+  { accountId: '7194816f-c897-4e89-a19a-d8af3c9b0c38', positionId: '71764112', symbol: 'XAUUSD', region: 'london' },
+  { accountId: '7194816f-c897-4e89-a19a-d8af3c9b0c38', positionId: '71766740', symbol: 'ETHUSD', region: 'london' },
 ];
 
 async function closeOrphan(orphan) {

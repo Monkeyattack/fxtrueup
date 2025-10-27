@@ -104,8 +104,8 @@
         "eaTradingDisclosed": false
       }
     },
-    "31d02aa2-be05-4af2-85c6-b2ad962e061b": {
-      "nickname": "FTMO Live 997",
+    "7194816f-c897-4e89-a19a-d8af3c9b0c38": {
+      "nickname": "FTMO Challange 554",
       "region": "london",
       "type": "destination",
       "platform": "mt5",
@@ -173,14 +173,24 @@
       "balance": 50000,
       "broker": "HolaPrime"
     },
-    "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d": {
-      "nickname": "AlphaTraderInstant060",
-      "region": "london",
+    "48cbc79b-148f-46dc-b054-79e6ed01f3c2": {
+      "nickname": "AlphaTraderInstant272",
+      "region": "new-york",
       "type": "destination",
       "platform": "mt5",
       "balance": 100000,
       "broker": "ClassicGlobal",
       "login": "247647640060",
+      "server": "ClassicGlobal-Server"
+    },
+    "a5a7c54b-6d69-4270-9be0-8fd7cadf3feb": {
+      "nickname": "AlphaTraderInstant885",
+      "region": "new-york",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 50000,
+      "broker": "ClassicGlobal",
+      "login": "247647642885",
       "server": "ClassicGlobal-Server"
     },
     "b90a1029-9ef4-4db5-be87-97fd148fe341": {
@@ -270,11 +280,11 @@
       "name": "PFK to Alpha Account-Size Matched",
       "description": "0.5x multiplier for $100k → $50k account sizing",
       "type": "proportional",
-      "multiplier": 1,
+      "multiplier": 0.5,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 3,
       "maxDailyLoss": 3000,
-      "maxOpenPositions": 6,
+      "maxOpenPositions": 3,
       "filters": []
     },
     "dynamic_risk": {
@@ -394,7 +404,7 @@
       "name": "Alpha Capital 100k",
       "description": "Alpha Capital Group-compliant for $100k",
       "type": "proportional",
-      "multiplier": 1,
+      "multiplier": 0.5,
       "roundingMode": "nearest_0.01",
       "maxDailyTrades": 12,
       "maxDailyLoss": 3000,
@@ -661,7 +671,7 @@
     },
     {
       "id": "Gold_to_LiveCopyFromGold_Aggressive",
-      "enabled": true,
+      "enabled": false,
       "name": "Gold to LiveCopyFromGold Aggressive",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
       "destination": "b90a1029-9ef4-4db5-be87-97fd148fe341",
@@ -677,13 +687,13 @@
     },
     {
       "id": "PFK_to_Alpha",
-      "enabled": true,
+      "enabled": false,
       "name": "PFK to Alpha LessAggressive",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
-      "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
+      "destination": "a5a7c54b-6d69-4270-9be0-8fd7cadf3feb",
       "ruleSet": "pfk_alpha_half",
       "description": "Account-size matched route: $100k → $50k = 0.5x multiplier",
-      "copyExistingPositions": false,
+      "copyExistingPositions": true,
       "notifications": {
         "onCopy": true,
         "onError": true,
@@ -741,7 +751,7 @@
       "enabled": true,
       "name": "PropFirmKid to FTMO 100k Live",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
-      "destination": "31d02aa2-be05-4af2-85c6-b2ad962e061b",
+      "destination": "7194816f-c897-4e89-a19a-d8af3c9b0c38",
       "ruleSet": "ftmo_standard_100k",
       "description": "Main EA to FTMO Live account with full compliance",
       "copyExistingPositions": false,
@@ -770,10 +780,10 @@
     },
     {
       "id": "PFK_to_AlphaTrader_FTMO50k",
-      "enabled": false,
+      "enabled": true,
       "name": "PropFirmKid to AlphaTrader Instant",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
-      "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
+      "destination": "48cbc79b-148f-46dc-b054-79e6ed01f3c2",
       "ruleSet": "ftmo_standard_50k",
       "description": "MT5 to MT5 copy with FTMO-compliant rules for AlphaTrader account",
       "copyExistingPositions": false,
@@ -789,7 +799,7 @@
       "enabled": false,
       "name": "GoldToFTMOLiveDynamic",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
-      "destination": "31d02aa2-be05-4af2-85c6-b2ad962e061b",
+      "destination": "7194816f-c897-4e89-a19a-d8af3c9b0c38",
       "ruleSet": "less_aggressive_dynamic",
       "description": "5x multiplier to FTMO Live with max daily trades",
       "copyExistingPositions": false,
@@ -805,7 +815,7 @@
       "enabled": false,
       "name": "PFK to Alpha Instant 060",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
-      "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
+      "destination": "48cbc79b-148f-46dc-b054-79e6ed01f3c2",
       "ruleSet": "alpha_capital_100k",
       "description": "Copy to the 100k instant account",
       "copyExistingPositions": false,
@@ -821,7 +831,7 @@
       "enabled": false,
       "name": "Gold To Alpha Instant",
       "source": "58b81c8e-18fa-4a1d-b7d0-b7f7aa7cf9ac",
-      "destination": "cec4bf95-4334-4ad7-bc9e-c2c5f8a59a3d",
+      "destination": "48cbc79b-148f-46dc-b054-79e6ed01f3c2",
       "ruleSet": "less_aggressive_dynamic",
       "description": "Gold Buy Only to Alpha Trader instant with a 5x",
       "copyExistingPositions": false,
