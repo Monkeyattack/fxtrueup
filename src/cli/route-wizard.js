@@ -94,6 +94,7 @@ class RouteWizard {
     this.print('4. Delete route', 'yellow');
     this.print('5. View accounts', 'yellow');
     this.print('6. View rulesets', 'yellow');
+    this.print('7. Sync accounts from meta-trader-hub', 'yellow');
     this.print('0. Exit', 'yellow');
     console.log();
 
@@ -377,6 +378,112 @@ class RouteWizard {
     await this.ask('Press Enter to continue...');
   }
 
+  // Sync accounts from meta-trader-hub
+  async syncAccounts() {
+    this.showHeader();
+    this.print('🔄 Sync Accounts from Meta Trader Hub', 'bright');
+    console.log();
+
+    // Path to meta-trader-hub config
+    const hubConfigPath = path.join(__dirname, '../../../meta-trader-hub/backend/config/account_routing.json');
+
+    try {
+      // Read meta-trader-hub config
+      const hubData = await fs.readFile(hubConfigPath, 'utf8');
+      const hubConfig = JSON.parse(hubData);
+
+      if (!hubConfig.accounts) {
+        this.print('❌ No accounts found in meta-trader-hub config', 'red');
+        await this.ask('Press Enter to continue...');
+        return;
+      }
+
+      const hubAccounts = hubConfig.accounts;
+      const currentAccounts = this.config.accounts || {};
+
+      let added = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      this.print('📊 Processing accounts from meta-trader-hub...', 'cyan');
+      console.log();
+
+      // Sync each account
+      for (const [accountId, hubAccount] of Object.entries(hubAccounts)) {
+        const existingAccount = currentAccounts[accountId];
+
+        // Determine account type for fxtrueup
+        let accountType;
+        if (existingAccount) {
+          // Preserve existing type
+          accountType = existingAccount.type;
+        } else {
+          // New account: copy_source → source, everything else → destination
+          accountType = hubAccount.account_type === 'copy_source' ? 'source' : 'destination';
+        }
+
+        // Build synced account
+        const syncedAccount = {
+          nickname: hubAccount.nickname,
+          region: hubAccount.region || 'new-york',
+          type: accountType,
+          platform: hubAccount.platform || 'mt5',
+          balance: hubAccount.balance || 100000,
+          broker: hubAccount.broker || 'Unknown'
+        };
+
+        // Preserve fxtrueup-specific fields if they exist
+        if (existingAccount?.defaultStopLoss) {
+          syncedAccount.defaultStopLoss = existingAccount.defaultStopLoss;
+        }
+        if (existingAccount?.defaultTakeProfit) {
+          syncedAccount.defaultTakeProfit = existingAccount.defaultTakeProfit;
+        }
+
+        // Add/update account
+        if (existingAccount) {
+          currentAccounts[accountId] = syncedAccount;
+          updated++;
+          this.print(`✓ Updated: ${syncedAccount.nickname} (${accountId.slice(0, 8)}...)`, 'green');
+        } else {
+          currentAccounts[accountId] = syncedAccount;
+          added++;
+          this.print(`+ Added: ${syncedAccount.nickname} (${accountId.slice(0, 8)}...)`, 'cyan');
+        }
+      }
+
+      // Update config
+      this.config.accounts = currentAccounts;
+
+      // Save
+      if (await this.saveConfig()) {
+        console.log();
+        this.print('═══════════════════════════════════════', 'cyan');
+        this.print(`✅ Sync completed successfully!`, 'green');
+        this.print(`   Added: ${added} accounts`, 'cyan');
+        this.print(`   Updated: ${updated} accounts`, 'cyan');
+        this.print('═══════════════════════════════════════', 'cyan');
+        console.log();
+        this.print('💡 Tip: Accounts with type "source" can be used in routes', 'yellow');
+        this.print('💡 Tip: Change account type in the config file if needed', 'yellow');
+        console.log();
+        this.print('🔄 Restart the router to apply changes:', 'yellow');
+        this.print('   pm2 restart fxtrueup-router', 'cyan');
+      }
+
+    } catch (error) {
+      this.print(`❌ Sync failed: ${error.message}`, 'red');
+      if (error.code === 'ENOENT') {
+        this.print('', 'reset');
+        this.print('Make sure meta-trader-hub is at:', 'yellow');
+        this.print(`  ${hubConfigPath}`, 'dim');
+      }
+    }
+
+    console.log();
+    await this.ask('Press Enter to continue...');
+  }
+
   // Main loop
   async run() {
     // Load config
@@ -408,6 +515,9 @@ class RouteWizard {
           break;
         case '6':
           await this.viewRuleSets();
+          break;
+        case '7':
+          await this.syncAccounts();
           break;
         case '0':
           running = false;
