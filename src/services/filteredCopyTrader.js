@@ -1161,11 +1161,12 @@ class FilteredCopyTrader {
 
     // Check SL distance if configured
     const slDistance = Math.abs(trade.openPrice - trade.stopLoss);
-    // For gold/silver: 1 point = $1, so no multiplication needed
+    // For gold/silver/crypto: 1 point = $1, so no multiplication needed
     // For JPY pairs: 1 pip = 0.01, so multiply by 100
     // For standard forex: 1 pip = 0.0001, so multiply by 10000
-    const slPips = trade.symbol.includes('XAU') || trade.symbol.includes('XAG')
-      ? slDistance * 1  // Gold/silver: measure in points (dollars)
+    const isCrypto = trade.symbol.includes('BTC') || trade.symbol.includes('ETH') || trade.symbol.includes('SOL');
+    const slPips = trade.symbol.includes('XAU') || trade.symbol.includes('XAG') || isCrypto
+      ? slDistance * 1  // Gold/silver/crypto: measure in points (dollars)
       : trade.symbol.includes('JPY')
       ? slDistance * 100  // JPY pairs: 2 decimal places
       : slDistance * 10000;  // Standard forex: 4 decimal places
