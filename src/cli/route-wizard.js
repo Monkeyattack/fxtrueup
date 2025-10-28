@@ -384,8 +384,8 @@ class RouteWizard {
     this.print('🔄 Sync Accounts from Meta Trader Hub', 'bright');
     console.log();
 
-    // Path to meta-trader-hub config
-    const hubConfigPath = path.join(__dirname, '../../../meta-trader-hub/backend/config/account_routing.json');
+    // Path to meta-trader-hub routing config (the authoritative source)
+    const hubConfigPath = path.join(__dirname, '../../../meta-trader-hub/backend/config/routing/accounts.json');
 
     try {
       // Read meta-trader-hub config
@@ -398,7 +398,7 @@ class RouteWizard {
         return;
       }
 
-      const hubAccounts = hubConfig.accounts;
+      const hubAccounts = hubConfig.accounts || {};
       const currentAccounts = this.config.accounts || {};
 
       let added = 0;
@@ -408,8 +408,16 @@ class RouteWizard {
       this.print('📊 Processing accounts from meta-trader-hub...', 'cyan');
       console.log();
 
-      // Sync each account
-      for (const [accountId, hubAccount] of Object.entries(hubAccounts)) {
+      // Sync each account (using mth_acc_XXX format from routing config)
+      for (const [mthId, hubAccount] of Object.entries(hubAccounts)) {
+        // Get the actual platform account ID (UUID)
+        const accountId = hubAccount.platform_account_id;
+        if (!accountId) {
+          this.print(`⚠ Skipping ${mthId}: no platform_account_id`, 'yellow');
+          skipped++;
+          continue;
+        }
+
         const existingAccount = currentAccounts[accountId];
 
         // Determine account type for fxtrueup
@@ -418,8 +426,9 @@ class RouteWizard {
           // Preserve existing type
           accountType = existingAccount.type;
         } else {
-          // New account: copy_source → source, everything else → destination
-          accountType = hubAccount.account_type === 'copy_source' ? 'source' : 'destination';
+          // New account: type=demo → source, everything else → destination
+          // This is a heuristic - user can change it later
+          accountType = hubAccount.type === 'demo' ? 'source' : 'destination';
         }
 
         // Build synced account
@@ -462,6 +471,9 @@ class RouteWizard {
         this.print(`✅ Sync completed successfully!`, 'green');
         this.print(`   Added: ${added} accounts`, 'cyan');
         this.print(`   Updated: ${updated} accounts`, 'cyan');
+        if (skipped > 0) {
+          this.print(`   Skipped: ${skipped} accounts`, 'yellow');
+        }
         this.print('═══════════════════════════════════════', 'cyan');
         console.log();
         this.print('💡 Tip: Accounts with type "source" can be used in routes', 'yellow');
