@@ -30,116 +30,27 @@
     },
     "019ec0f0-09f5-4230-a7bd-fa2930af07a4": {
       "nickname": "GridDemo",
-      "region": "new-york",
+      "region": "london",
       "type": "destination",
       "platform": "mt5",
       "balance": 118000,
-      "broker": "ICMarkets",
-      "propFirmSettings": {
-        "propFirmType": "Tiger Funded",
-        "challengePhase": "challenge",
-        "accountSize": 118000,
-        "startingBalance": 118000,
-        "maxTotalDrawdown": 11800,
-        "maxTotalDrawdownPercent": 10,
-        "maxDailyDrawdown": 5900,
-        "maxDailyDrawdownPercent": 5,
-        "drawdownCalculationMethod": "initial_balance",
-        "trackFloatingDrawdown": true,
-        "requireStopLoss": false,
-        "allowedSymbols": [
-          "EURUSD",
-          "GBPUSD",
-          "USDJPY",
-          "XAUUSD",
-          "US30",
-          "NAS100"
-        ],
-        "prohibitedStrategies": [
-          "high_frequency",
-          "news_trading"
-        ],
-        "eaTradingAllowed": true,
-        "eaTradingDisclosed": false
-      }
+      "broker": "ICMarkets"
     },
     "166bea1c-306e-4a6a-8720-823a0134474f": {
       "nickname": "PropFirm50k",
-      "region": "new-york",
+      "region": "london",
       "type": "destination",
       "platform": "mt5",
       "balance": 50000,
-      "broker": "FTMO",
-      "propFirmSettings": {
-        "propFirmType": "FTMO",
-        "challengePhase": "challenge",
-        "accountSize": 50000,
-        "startingBalance": 50000,
-        "maxTotalDrawdown": 5000,
-        "maxTotalDrawdownPercent": 10,
-        "maxDailyDrawdown": 2500,
-        "maxDailyDrawdownPercent": 5,
-        "drawdownCalculationMethod": "balance",
-        "trackFloatingDrawdown": true,
-        "requireStopLoss": true,
-        "allowedSymbols": [
-          "EURUSD",
-          "GBPUSD",
-          "USDJPY",
-          "AUDUSD",
-          "USDCAD",
-          "XAUUSD",
-          "XAGUSD",
-          "US30",
-          "NAS100",
-          "SPX500"
-        ],
-        "prohibitedStrategies": [
-          "martingale",
-          "grid",
-          "hedging",
-          "arbitrage"
-        ],
-        "eaTradingAllowed": true,
-        "eaTradingDisclosed": false
-      }
+      "broker": "FTMO"
     },
     "7194816f-c897-4e89-a19a-d8af3c9b0c38": {
-      "nickname": "FTMO Challange 554",
+      "nickname": "FTMO Challange 544",
       "region": "london",
       "type": "destination",
       "platform": "mt5",
       "balance": 100000,
-      "broker": "FTMO",
-      "login": "540313997",
-      "server": "FTMO-Server4",
-      "propFirmSettings": {
-        "propFirmType": "FTMO",
-        "challengePhase": "live",
-        "accountSize": 100000,
-        "startingBalance": 100000,
-        "maxTotalDrawdown": 10000,
-        "maxTotalDrawdownPercent": 10,
-        "maxDailyDrawdown": 5000,
-        "maxDailyDrawdownPercent": 5,
-        "drawdownCalculationMethod": "balance",
-        "trackFloatingDrawdown": true,
-        "requireStopLoss": false,
-        "allowedSymbols": [
-          "XAUUSD",
-          "XAGUSD",
-          "ETHUSD",
-          "SPX500"
-        ],
-        "prohibitedStrategies": [
-          "martingale",
-          "grid",
-          "hedging",
-          "arbitrage"
-        ],
-        "eaTradingAllowed": true,
-        "eaTradingDisclosed": false
-      }
+      "broker": "FTMO"
     },
     "ctrader-demo-12345": {
       "nickname": "CTraderDemo",
@@ -166,26 +77,24 @@
       "broker": "RoboForex"
     },
     "hola_C62330": {
-      "nickname": "HolaPrimeProp50k",
-      "environment": "live",
+      "nickname": "HolaPrime Prop 50k",
+      "region": "london",
       "type": "destination",
       "platform": "dxtrade",
       "balance": 50000,
       "broker": "HolaPrime"
     },
     "48cbc79b-148f-46dc-b054-79e6ed01f3c2": {
-      "nickname": "AlphaTraderInstant272",
-      "region": "new-york",
+      "nickname": "AlphaTrader272",
+      "region": "london",
       "type": "destination",
       "platform": "mt5",
       "balance": 100000,
-      "broker": "ClassicGlobal",
-      "login": "247647640060",
-      "server": "ClassicGlobal-Server"
+      "broker": "AlphaTrader"
     },
     "a5a7c54b-6d69-4270-9be0-8fd7cadf3feb": {
       "nickname": "AlphaTraderInstant885",
-      "region": "new-york",
+      "region": "london",
       "type": "destination",
       "platform": "mt5",
       "balance": 50000,
@@ -198,10 +107,88 @@
       "region": "london",
       "type": "destination",
       "platform": "mt5",
-      "balance": 0,
-      "broker": "PlexyTrade",
-      "login": "3071423",
-      "server": "PlexyTrade-Server01"
+      "balance": 100000,
+      "broker": "PlexyTrade"
+    },
+    "4019e233-89b6-4c36-8df0-3f24381d95ad": {
+      "nickname": "Cash MT4 Gold",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt4",
+      "balance": 10000,
+      "broker": "PlexyTrade"
+    },
+    "95803f2a-a79d-4d26-a303-026899543c75": {
+      "nickname": "GoldBuyOnly-NY",
+      "region": "london",
+      "type": "source",
+      "platform": "metaapi",
+      "balance": 100000,
+      "broker": "ICMarkets"
+    },
+    "d867681f-ef6f-4b05-9ded-901ba97e9b3a": {
+      "nickname": "PropFirmKid-NY",
+      "region": "london",
+      "type": "source",
+      "platform": "metaapi",
+      "balance": 100000,
+      "broker": "ICMarkets"
+    },
+    "edb5b25f-435b-4685-b0a3-41c3fc252a10": {
+      "nickname": "NexLevel308",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 100000,
+      "broker": "NexLevelFunded"
+    },
+    "1d8df15d-b734-4071-9fc7-0117eddb50da": {
+      "nickname": "NexLevel784",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 100000,
+      "broker": "ALFX"
+    },
+    "1f5b9b4f-fb8c-472f-b61e-b4115fc9675e": {
+      "nickname": "NextLevel926",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 100000,
+      "broker": "ALFX"
+    },
+    "0170c3d9-883c-4666-8b08-655ee4ddf86d": {
+      "nickname": "Upcomers980",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 100000,
+      "broker": "Ozenfx"
+    },
+    "e75a4ea1-29b8-4d90-ab40-cb82dd85119a": {
+      "nickname": "Upcomers626",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 100000,
+      "broker": "Ozenfx"
+    },
+    "a28f6abf-59d2-44bf-bf2d-0d8f31d79f67": {
+      "nickname": "Upcomers878",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 100000,
+      "broker": "Ozenfx"
+    },
+    "f19ae8eb-9c01-4a1e-ba48-97d81f3e8416": {
+      "nickname": "NextLevel061",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 50000,
+      "broker": "FalconMarkets"
     }
   },
   "ruleSets": {
@@ -559,13 +546,11 @@
       "name": "Require Stop Loss",
       "description": "Only copy trades that have a stop loss set",
       "type": "stop_loss_filter",
-      "requireSL": true,
-      "minSLDistance": 10,
-      "maxSLDistance": 200
+      "requireSL": true
     },
     "symbol_whitelist": {
       "name": "Symbol Whitelist",
-      "description": "Only trade allowed symbols",
+      "description": "Only trade allowed symbols (includes crypto)",
       "type": "symbol_filter",
       "mode": "whitelist",
       "symbols": [
@@ -574,7 +559,10 @@
         "USDJPY",
         "XAUUSD",
         "US30",
-        "NAS100"
+        "NAS100",
+        "ETHUSD",
+        "BTCUSD",
+        "SOLUSD"
       ]
     },
     "symbol_whitelist_with_crypto": {
@@ -748,7 +736,7 @@
     },
     {
       "id": "PFK_to_FTMO100k_Live",
-      "enabled": true,
+      "enabled": false,
       "name": "PropFirmKid to FTMO 100k Live",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "7194816f-c897-4e89-a19a-d8af3c9b0c38",
@@ -780,7 +768,7 @@
     },
     {
       "id": "PFK_to_AlphaTrader_FTMO50k",
-      "enabled": true,
+      "enabled": false,
       "name": "PropFirmKid to AlphaTrader Instant",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "48cbc79b-148f-46dc-b054-79e6ed01f3c2",
@@ -850,6 +838,86 @@
       "destination": "hola_C62330",
       "ruleSet": "hola_prime_standard_50k",
       "description": "PFK to Hola Prime 1x with crypto support",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PropFirmKid_to_NexLevel784_1762276653649",
+      "enabled": true,
+      "name": "PFK-NextLevel784",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "1d8df15d-b734-4071-9fc7-0117eddb50da",
+      "ruleSet": "ftmo_standard_100k",
+      "description": "Prop Firm Kid to Next Leve 20151104",
+      "copyExistingPositions": true,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PropFirmKid_to_NextLevel926_1762290025671",
+      "enabled": false,
+      "name": "PFK to NextLevel926",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "1f5b9b4f-fb8c-472f-b61e-b4115fc9675e",
+      "ruleSet": "ftmo_standard_100k",
+      "description": "Created via CLI wizard",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PropFirmKid_to_Upcomers626_1762979442835",
+      "enabled": true,
+      "name": "PFK to Upcomers626",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "e75a4ea1-29b8-4d90-ab40-cb82dd85119a",
+      "ruleSet": "ftmo_standard_100k",
+      "description": "Basic EA bypass",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PropFirmKid_to_Upcomers878_1763615435496",
+      "enabled": true,
+      "name": "PFK to Upcomers878",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "a28f6abf-59d2-44bf-bf2d-0d8f31d79f67",
+      "ruleSet": "ftmo_standard_100k",
+      "description": "PFK",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PropFirmKid_to_NextLevel061_1764104433603",
+      "enabled": true,
+      "name": "PFKToNextLevel06120251125",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "f19ae8eb-9c01-4a1e-ba48-97d81f3e8416",
+      "ruleSet": "pfk_alpha_half",
+      "description": "Created via CLI wizard",
       "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,
