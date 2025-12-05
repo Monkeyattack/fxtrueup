@@ -682,13 +682,18 @@ class FilteredCopyTrader {
       const destNickname = this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId;
       const multiplier = destVolume / sourceTrade.volume;
 
+      // Get destination account config for symbol suffix
+      const destAccountConfig = this.routeConfig?.accounts?.[this.destAccountId] || {};
+      const symbolSuffix = destAccountConfig.symbolSuffix || '';
+      const destSymbol = sourceTrade.symbol + symbolSuffix;
+
       logger.info(`📋 COPYING trade for route ${sourceNickname} → ${destNickname}:`);
-      logger.info(`   Symbol: ${sourceTrade.symbol}`);
+      logger.info(`   Symbol: ${sourceTrade.symbol}${symbolSuffix ? ` → ${destSymbol}` : ''}`);
       logger.info(`   Type: ${sourceTrade.type}`);
       logger.info(`   Source volume: ${sourceTrade.volume} lots`);
       logger.info(`   Destination volume: ${destVolume} lots (${multiplier.toFixed(2)}x multiplier, L${martingaleLevel})`);;
       tradeTracker.sized(sourceTrade, destVolume, martingaleLevel);
-      
+
       // Prepare trade data
       const isBuy = sourceTrade.type === 'POSITION_TYPE_BUY';
       const calculatedSL = this.calculateStopLoss(sourceTrade);
@@ -700,7 +705,7 @@ class FilteredCopyTrader {
       logger.info(`   Entry Price: ${sourceTrade.openPrice || sourceTrade.currentPrice || 'unknown'}`);
 
       const tradeData = {
-        symbol: sourceTrade.symbol,
+        symbol: destSymbol,
         action: isBuy ? 'BUY' : 'SELL',
         actionType: isBuy ? 'ORDER_TYPE_BUY' : 'ORDER_TYPE_SELL',
         volume: destVolume,
@@ -731,7 +736,7 @@ class FilteredCopyTrader {
           accountId: this.destAccountId,
           positionId: destPositionId,
           sourceSymbol: sourceTrade.symbol,
-          destSymbol: sourceTrade.symbol,
+          destSymbol: destSymbol,
           sourceVolume: sourceTrade.volume,
           destVolume: destVolume,
           openTime: sourceTrade.openTime,
@@ -847,11 +852,34 @@ class FilteredCopyTrader {
   }
 
   /**
-   * Check if error is retryable (connection/timeout issues)
+   * Check if error is retryable (connection/timeout issues) vs permanent (margin, validation)
    */
   isRetryableError(errorMessage) {
     if (!errorMessage) return false;
 
+    // NON-RETRYABLE errors (permanent failures) - check these FIRST
+    const nonRetryablePatterns = [
+      'Insufficient free margin',
+      'not enough money',
+      'margin call',
+      'account disabled',
+      'symbol not found',
+      'invalid volume',
+      'market closed'
+    ];
+
+    const errorLower = errorMessage.toLowerCase();
+
+    // If it matches a non-retryable pattern, return false immediately
+    const isNonRetryable = nonRetryablePatterns.some(pattern =>
+      errorLower.includes(pattern.toLowerCase())
+    );
+
+    if (isNonRetryable) {
+      return false; // Do NOT retry these errors
+    }
+
+    // RETRYABLE errors (temporary connection/network issues)
     const retryablePatterns = [
       'timeout',
       'ETIMEDOUT',
@@ -866,7 +894,6 @@ class FilteredCopyTrader {
       'Invalid response from getPositions'  // API connection issues
     ];
 
-    const errorLower = errorMessage.toLowerCase();
     return retryablePatterns.some(pattern =>
       errorLower.includes(pattern.toLowerCase())
     );
@@ -1270,16 +1297,42 @@ class FilteredCopyTrader {
     const destInfo = await unifiedPoolClient.getAccountInfo(this.destAccountId, this.destRegion);
     const accountBalance = destInfo.balance || destInfo.equity;
 
-    // Calculate risk based on stop loss
+    // Calculate risk based on stop loss with proper contract sizes
     let riskAmount = 0;
     if (trade.stopLoss && trade.stopLoss !== 0) {
       const slDistance = Math.abs(trade.openPrice - trade.stopLoss);
-      const pipValue = trade.volume * 10; // Simplified pip value
-      const slPips = trade.symbol.includes('JPY') ? slDistance * 100 : slDistance * 10000;
-      riskAmount = slPips * pipValue;
+
+      // Get correct contract size based on symbol
+      let contractSize = 100000; // Default forex standard lot
+
+      // Crypto and metals use different contract sizes
+      if (trade.symbol.includes('XAU') || trade.symbol === 'XAUUSD') {
+        contractSize = 100; // Gold: 100 oz per lot
+      } else if (trade.symbol.includes('XAG') || trade.symbol === 'XAGUSD') {
+        contractSize = 5000; // Silver: 5000 oz per lot
+      } else if (trade.symbol.includes('ETH') || trade.symbol === 'ETHUSD') {
+        contractSize = 10; // Ethereum: 10 ETH per lot (most brokers including AlphaTrader)
+      } else if (trade.symbol.includes('BTC') || trade.symbol === 'BTCUSD') {
+        contractSize = 1; // Bitcoin: 1 BTC per lot
+      } else if (trade.symbol.includes('SOL') || trade.symbol === 'SOLUSD') {
+        contractSize = 10; // Solana: 10 SOL per lot
+      }
+
+      // For crypto and metals, SL distance is already in dollars per unit
+      // Risk = SL distance * contract size * lots
+      riskAmount = slDistance * contractSize * trade.volume;
+
     } else {
       // No SL, estimate risk as 2% of position value
-      riskAmount = (trade.openPrice * trade.volume * 100000) * 0.02;
+      // Use correct contract size instead of hardcoded 100000
+      let contractSize = 100000;
+      if (trade.symbol.includes('XAU')) contractSize = 100;
+      else if (trade.symbol.includes('XAG')) contractSize = 5000;
+      else if (trade.symbol.includes('ETH')) contractSize = 10;
+      else if (trade.symbol.includes('BTC')) contractSize = 1;
+      else if (trade.symbol.includes('SOL')) contractSize = 10;
+
+      riskAmount = (trade.openPrice * trade.volume * contractSize) * 0.02;
     }
 
     const riskPercent = (riskAmount / accountBalance) * 100;

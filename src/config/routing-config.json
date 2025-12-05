@@ -189,6 +189,15 @@
       "platform": "mt5",
       "balance": 50000,
       "broker": "FalconMarkets"
+    },
+    "76e9d1df-9e29-4782-afc3-02cf1be5cad8": {
+      "nickname": "Upcomers503",
+      "region": "london",
+      "type": "destination",
+      "platform": "mt5",
+      "balance": 100000,
+      "broker": "Ozenfx",
+      "symbolSuffix": ".d"
     }
   },
   "ruleSets": {
@@ -832,7 +841,7 @@
     },
     {
       "id": "PropFirmKid_to_HolaPrimeProp50k_1759798100992",
-      "enabled": true,
+      "enabled": false,
       "name": "PFK to HolaPrime",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "hola_C62330",
@@ -848,7 +857,7 @@
     },
     {
       "id": "PropFirmKid_to_NexLevel784_1762276653649",
-      "enabled": true,
+      "enabled": false,
       "name": "PFK-NextLevel784",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "1d8df15d-b734-4071-9fc7-0117eddb50da",
@@ -880,7 +889,7 @@
     },
     {
       "id": "PropFirmKid_to_Upcomers626_1762979442835",
-      "enabled": true,
+      "enabled": false,
       "name": "PFK to Upcomers626",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "e75a4ea1-29b8-4d90-ab40-cb82dd85119a",
@@ -896,7 +905,7 @@
     },
     {
       "id": "PropFirmKid_to_Upcomers878_1763615435496",
-      "enabled": true,
+      "enabled": false,
       "name": "PFK to Upcomers878",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "a28f6abf-59d2-44bf-bf2d-0d8f31d79f67",
@@ -918,6 +927,22 @@
       "destination": "f19ae8eb-9c01-4a1e-ba48-97d81f3e8416",
       "ruleSet": "pfk_alpha_half",
       "description": "Created via CLI wizard",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PropFirmKid_to_Upcomers503_1764965648178",
+      "enabled": true,
+      "name": "PFK to Upcomers503",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "76e9d1df-9e29-4782-afc3-02cf1be5cad8",
+      "ruleSet": "hola_prime_standard_50k",
+      "description": "20251205 Upcomers",
       "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,

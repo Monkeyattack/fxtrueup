@@ -448,6 +448,13 @@ class RouteWizard {
         if (existingAccount?.defaultTakeProfit) {
           syncedAccount.defaultTakeProfit = existingAccount.defaultTakeProfit;
         }
+        if (existingAccount?.symbolSuffix) {
+          syncedAccount.symbolSuffix = existingAccount.symbolSuffix;
+        }
+        // Also check if meta-trader-hub has symbolSuffix configured
+        if (hubAccount.symbolSuffix) {
+          syncedAccount.symbolSuffix = hubAccount.symbolSuffix;
+        }
 
         // Add/update account
         if (existingAccount) {
