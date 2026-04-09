@@ -232,15 +232,26 @@ class FilteredCopyTrader {
 <i>Will retry every 30 seconds until successful</i>`);
             }
           } else {
-            logger.error(`❌ CRITICAL: No mapping for closed position ${posId}`);
+            // Get position details before deleting from tracked positions
+            const closedPosition = this.sourcePositions.get(posId);
+            const sourceNickname = this.routeConfig?.accounts?.[this.sourceAccountId]?.nickname || this.sourceAccountId.slice(0, 8);
+            const destNickname = this.routeConfig?.accounts?.[this.destAccountId]?.nickname || this.destAccountId.slice(0, 8);
 
-            // Send alert - this should never happen
-            await telegram.sendMessage(`<b>❌ CRITICAL ERROR</b>
+            logger.error(`❌ CRITICAL: No mapping for closed position ${posId} (${closedPosition?.symbol || 'unknown'}) on ${sourceNickname}`);
 
-<b>Source Position Closed:</b> ${posId}
-<b>NO MAPPING FOUND</b>
+            // Send alert with full context - this should never happen
+            await telegram.sendMessage(`<b>❌ CRITICAL ERROR - NO MAPPING FOUND</b>
 
-<i>Manual intervention required - orphan position may exist</i>`);
+<b>Source Account:</b> ${sourceNickname}
+<b>Dest Account:</b> ${destNickname}
+<b>Position ID:</b> ${posId}
+<b>Symbol:</b> ${closedPosition?.symbol || 'unknown'}
+<b>Type:</b> ${closedPosition?.type || 'unknown'}
+<b>Volume:</b> ${closedPosition?.volume || 'unknown'} lots
+<b>Open Price:</b> ${closedPosition?.openPrice || 'unknown'}
+<b>Open Time:</b> ${closedPosition?.openTime ? new Date(closedPosition.openTime).toISOString() : 'unknown'}
+
+<i>Manual intervention required - orphan position may exist on ${destNickname}</i>`);
           }
 
           // Remove from tracked positions

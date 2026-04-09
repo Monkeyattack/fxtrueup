@@ -184,8 +184,22 @@ class PoolClient {
 
       return data;
     } catch (error) {
-      logger.error(`Failed to execute trade: ${error.message}`);
-      return { success: false, error: error.message };
+      // Extract the detailed error message from the pool API response
+      let detailedError = error.message;
+
+      if (error.response?.data?.detail) {
+        detailedError = error.response.data.detail;
+      } else if (error.response?.data?.error) {
+        detailedError = error.response.data.error;
+      }
+
+      // Map specific MetaAPI errors to user-friendly messages
+      if (detailedError.includes('not enough money') || detailedError.includes('insufficient margin')) {
+        detailedError = 'Insufficient free margin';
+      }
+
+      logger.error(`Failed to execute trade: ${detailedError}`);
+      return { success: false, error: detailedError };
     }
   }
 

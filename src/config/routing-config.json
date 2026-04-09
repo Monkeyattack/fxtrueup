@@ -198,6 +198,22 @@
       "balance": 100000,
       "broker": "Ozenfx",
       "symbolSuffix": ".d"
+    },
+    "3e6193a0-213c-49f5-bf67-11e888682d9a": {
+      "nickname": "DemoQueen",
+      "region": "london",
+      "type": "source",
+      "platform": "mt5",
+      "balance": 100000,
+      "broker": "PlexyTrade"
+    },
+    "760d0f2c-ced1-457a-b946-3f0648e4a932": {
+      "nickname": "DemoWaka",
+      "region": "london",
+      "type": "source",
+      "platform": "mt4",
+      "balance": 100000,
+      "broker": "PlexyTrade"
     }
   },
   "ruleSets": {
@@ -921,7 +937,7 @@
     },
     {
       "id": "PropFirmKid_to_NextLevel061_1764104433603",
-      "enabled": true,
+      "enabled": false,
       "name": "PFKToNextLevel06120251125",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "f19ae8eb-9c01-4a1e-ba48-97d81f3e8416",
@@ -937,7 +953,7 @@
     },
     {
       "id": "PropFirmKid_to_Upcomers503_1764965648178",
-      "enabled": true,
+      "enabled": false,
       "name": "PFK to Upcomers503",
       "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
       "destination": "76e9d1df-9e29-4782-afc3-02cf1be5cad8",
@@ -946,6 +962,22 @@
       "copyExistingPositions": false,
       "notifications": {
         "onCopy": true,
+        "onError": true,
+        "onFilter": false,
+        "channel": "telegram"
+      }
+    },
+    {
+      "id": "PropFirmKid_to_Upcomers503_1765215740459",
+      "enabled": false,
+      "name": "PFK To Upcomer503Turbo",
+      "source": "1becc873-1ac2-4dbd-b98d-0d81f1e13a4b",
+      "destination": "76e9d1df-9e29-4782-afc3-02cf1be5cad8",
+      "ruleSet": "less_aggressive_dynamic",
+      "description": "7 day limit",
+      "copyExistingPositions": false,
+      "notifications": {
+        "onCopy": false,
         "onError": true,
         "onFilter": false,
         "channel": "telegram"
